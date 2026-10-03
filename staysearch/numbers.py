@@ -137,10 +137,47 @@ def main() -> None:
                table(["ground-truth ranker", "retrieval", "replay recall@100", "95% CI", "queries"],
                      [[r["ground_truth_ranker"], r["retrieval"], pct(r["replay_recall@100"]),
                        f"[{pct(r['ci95'][0])}, {pct(r['ci95'][1])}]", r["n_queries"]] for r in rr]), ""]
+    e4 = rows("m4_exp4")
+    if e4:
+        import statistics as st
+        groups = defaultdict(list)
+        for r in e4:
+            groups[(r["mode"], r["rate_target"])].append(r)
+        mean = lambda xs: st.mean(xs) if xs else float("nan")
+        body = []
+        for (mode, rate), rs in sorted(groups.items(), key=lambda kv: (kv[0][0], kv[0][1])):
+            g = lambda f: mean([f(r) for r in rs if f(r) is not None])
+            body.append([mode, f"{rate:,.0f}", len(rs), f"{g(lambda r: r['replay']['achieved_rate']):,.0f}",
+                         f"{g(lambda r: r['replay']['backlog']):,.0f}",
+                         f"{g(lambda r: r['index_bytes']) / 2**20:.1f}", f"{g(lambda r: r['rss_bytes']) / 2**20:.0f}",
+                         f"{g(lambda r: r['jvm_heap_used_bytes']) / 2**20:.0f}", f"{g(lambda r: r['index_build_ms']) / 1000:.1f}",
+                         f"{g(lambda r: r['refresh_lag'].get('p50_ms')):.0f} / {g(lambda r: r['refresh_lag'].get('p99_ms')):.0f}",
+                         f"{g(lambda r: r['merge'].get('total_ms', 0)) / 1000:.1f}",
+                         pct(g(lambda r: r['recall_at_100_vs_exact'])),
+                         f"{g(lambda r: r['queries']['latency_from_intended_us']['p50_us']) / 1000:.1f} / "
+                         f"{g(lambda r: r['queries']['latency_from_intended_us']['p99_us']) / 1000:.1f}"])
+        md += [f"## exp4: IVF vs HNSW in Lucene under the real update stream (`{e4[0]['_file']}`)", "",
+               f"Machine: {e4[0]['machine'].get('cpu')}, {e4[0]['machine'].get('cores')} cores; generator in the same JVM. "
+               "Each row is the mean over its repeats of a 60 s run with every event rewriting the listing's Lucene document; "
+               "queries at 20/s from the test set (k=100, nprobe 16, DNN ranker). Index size is bytes on disk at the end of the run.", "",
+               table(["mode", "target events/s", "repeats", "achieved events/s", "backlog", "index MB", "RSS MB", "heap MB",
+                      "build s", "refresh lag p50 / p99 ms", "merge s", "recall@100 vs exact", "query p50 / p99 ms"], body), ""]
+    lat = rows("m3_latency")
+    if lat:
+        md += [f"## exp9: end-to-end latency (`{lat[0]['_file']}`)", "",
+               f"Machine: {lat[0]['machine'].get('cpu')}, {lat[0]['machine'].get('cores')} cores. Open-loop arrivals at a constant rate, "
+               "measured from each request's intended send time; the generator runs in the same JVM and its own dispatch lag is shown.", "",
+               table(["queries/s", "updates/s", "end-to-end p50 / p99 ms", "service p50 / p99 ms", "query tower p50 us",
+                      "Lucene filter p50 us", "exact distance p50 us", "ranker p50 us", "generator lag p99 us"],
+                     [[f"{r['arrival_rate_qps']:.0f}", f"{r['update_rate']:.0f}",
+                       f"{r['total_from_intended_us']['p50_us'] / 1000:.2f} / {r['total_from_intended_us']['p99_us'] / 1000:.2f}",
+                       f"{r['service_stages_us']['total']['p50_us'] / 1000:.2f} / {r['service_stages_us']['total']['p99_us'] / 1000:.2f}",
+                       r['service_stages_us']['query_tower']['p50_us'], r['service_stages_us']['filter']['p50_us'],
+                       r['service_stages_us']['distance']['p50_us'], r['service_stages_us']['rank']['p50_us'],
+                       r['generator_dispatch_lag_us']['p99_us']] for r in lat]), ""]
     # Service experiments: generic tables, every key shown.
     for name, title in (("m3_invariant", "M3: hard invariant replay"), ("m3_parity", "M3: ONNX parity"),
-                        ("m3_exp5", "exp5: availability check (JMH)"), ("m3_latency", "exp9: end-to-end latency"),
-                        ("m4_exp4", "exp4: IVF vs HNSW in Lucene under the update stream"),
+                        ("m3_exp5", "exp5: availability check (JMH)"),
                         ("m6_flexdates", "M6(b): flexible dates"), ("m6_diversity", "M6(a): diversity re-ranking"),
                         ("m5_position_bias", "exp10 (M5): position bias, SIMULATED")):
         rs = rows(name)

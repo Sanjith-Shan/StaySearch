@@ -226,6 +226,38 @@ Recall@100 of each retrieval method against the ranker's top 100 over the full e
 | dnn_hist | popularity_ltm | 57.1% | [56.5%, 57.7%] | 10000 |
 
 
+## exp4: IVF vs HNSW in Lucene under the real update stream (`results/m4_exp4.jsonl`)
+
+Machine: AMD Ryzen 3 4300U with Radeon Graphics, 4 cores; generator in the same JVM. Each row is the mean over its repeats of a 60 s run with every event rewriting the listing's Lucene document; queries at 20/s from the test set (k=100, nprobe 16, DNN ranker). Index size is bytes on disk at the end of the run.
+
+| mode | target events/s | repeats | achieved events/s | backlog | index MB | RSS MB | heap MB | build s | refresh lag p50 / p99 ms | merge s | recall@100 vs exact | query p50 / p99 ms |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| hnsw | 0 | 3 | 0 | 0 | 69.5 | 1028 | 433 | 26.4 | 0 / 0 | 0.0 | 98.9% | 2.9 / 12.6 |
+| hnsw | 100 | 3 | 100 | 0 | 141.5 | 1212 | 433 | 26.6 | 443 / 1061 | 16.4 | 99.1% | 2.9 / 15.8 |
+| hnsw | 1,000 | 3 | 1,000 | 7 | 155.6 | 1269 | 433 | 27.1 | 639 / 1524 | 23.1 | 99.5% | 3.0 / 18.6 |
+| hnsw | 10,000 | 3 | 8,759 | 74,387 | 280.4 | 1302 | 507 | 27.0 | 817 / 1733 | 83.4 | 99.8% | 4.0 / 42.0 |
+| ivf | 0 | 3 | 0 | 0 | 10.7 | 864 | 432 | 1.2 | 0 / 0 | 0.0 | 77.3% | 2.1 / 8.8 |
+| ivf | 100 | 3 | 100 | 0 | 11.1 | 993 | 433 | 1.0 | 548 / 1102 | 0.3 | 77.3% | 2.2 / 9.7 |
+| ivf | 1,000 | 3 | 1,000 | 5 | 21.9 | 1168 | 433 | 0.8 | 577 / 1235 | 1.0 | 77.3% | 2.3 / 13.9 |
+| ivf | 10,000 | 3 | 9,998 | 102 | 23.0 | 1125 | 434 | 0.8 | 746 / 1608 | 4.9 | 77.3% | 2.3 / 19.6 |
+
+
+## exp9: end-to-end latency (`results/m3_latency.jsonl`)
+
+Machine: AMD Ryzen 3 4300U with Radeon Graphics, 4 cores. Open-loop arrivals at a constant rate, measured from each request's intended send time; the generator runs in the same JVM and its own dispatch lag is shown.
+
+| queries/s | updates/s | end-to-end p50 / p99 ms | service p50 / p99 ms | query tower p50 us | Lucene filter p50 us | exact distance p50 us | ranker p50 us | generator lag p99 us |
+|---|---|---|---|---|---|---|---|---|
+| 25 | 0 | 1.94 / 4.29 | 1.82 / 3.94 | 295 | 892 | 135 | 367 | 135 |
+| 50 | 0 | 1.77 / 4.32 | 1.67 / 4.21 | 325 | 812 | 135 | 314 | 45 |
+| 100 | 0 | 1.56 / 4.04 | 1.46 / 3.96 | 160 | 794 | 137 | 274 | 0 |
+| 200 | 0 | 1.46 / 3.54 | 1.35 / 3.43 | 144 | 736 | 134 | 245 | 0 |
+| 25 | 1000 | 2.01 / 4.88 | 1.93 / 4.81 | 306 | 1044 | 156 | 319 | 101 |
+| 50 | 1000 | 1.86 / 4.62 | 1.78 / 4.54 | 297 | 964 | 142 | 292 | 87 |
+| 100 | 1000 | 1.70 / 4.14 | 1.58 / 3.99 | 158 | 927 | 134 | 272 | 0 |
+| 200 | 1000 | 1.60 / 3.77 | 1.50 / 3.68 | 145 | 883 | 129 | 247 | 0 |
+
+
 ## M3: hard invariant replay (`results/m3_invariant.jsonl`)
 
 Machine: Apple M3 Pro, load 8.19677734375.
@@ -262,26 +294,6 @@ Machine: None, load -1.0.
 | exp5_availability | runLengthSingle | run_length | 1 | 11.4 | 0.2786 | ns/op | 20 | 2 | 5 | 10 | 7 | bundle | 1.37 | 1 | 2026-03-16 | False |
 | exp5_availability | runLengthSingle | run_length | 1 | 11.39 | 0.1218 | ns/op | 20 | 2 | 5 | 10 | 14 | bundle | 1.37 | 1 | 2026-03-16 | False |
 | exp5_availability | runLengthSingle | run_length | 1 | 11.24 | 0.7949 | ns/op | 20 | 2 | 5 | 10 | 28 | bundle | 1.37 | 1 | 2026-03-16 | False |
-
-
-## exp9: end-to-end latency (`results/m3_latency.jsonl`)
-
-Machine: None, load -1.0.
-
-| experiment | arrival_rate_qps | duration_s | warmup_s | with_updates | update_rate | replay | mode | ranker | k | t | nprobe | generator | issued | completed | errors | last_error | repeat | bundle_as_of | bundle_dir | bundle_synthetic | n_listings | lucene_version |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| exp9_latency | 25 | 30 | 15 | False | 0 | None | ivf | dnn | 100 | 25 | 16 | in-process, same JVM, 8 worker threads | 750 | 750 | 0 | None | 1 | 2026-03-16 | C:\Mac\Documents\StaySearch\service\..\artifacts\bundle | False | 212828 | 10.5.1 |
-| exp9_latency | 50 | 30 | 15 | False | 0 | None | ivf | dnn | 100 | 25 | 16 | in-process, same JVM, 8 worker threads | 1500 | 1500 | 0 | None | 1 | 2026-03-16 | C:\Mac\Documents\StaySearch\service\..\artifacts\bundle | False | 212828 | 10.5.1 |
-
-
-## exp4: IVF vs HNSW in Lucene under the update stream (`results/m4_exp4.jsonl`)
-
-Machine: None, load -1.0.
-
-| experiment | mode | rate_target | duration_s | elapsed_s | index_writes_per_s | jvm_heap_used_bytes | rss_bytes | index_bytes | heap_after_build_bytes | rss_after_build_bytes | index_bytes_after_build | index_build_ms | availability_store_bytes | recall_at_100_vs_exact | recall_queries | repeat | bundle_as_of | bundle_dir | bundle_synthetic | n_listings | lucene_version |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| exp4 | ivf | 0 | 60 | 59.96 | 0 | 453688240 | None | 11210245 | 452380464 | None | 11210245 | 2130 | 136616440 | 0.7734 | 240 | 1 | 2026-03-16 | C:\Mac\Documents\StaySearch\service\..\artifacts\bundle | False | 212828 | 10.5.1 |
-| exp4 | ivf | 100 | 60 | 59.95 | 0 | 453833240 | None | 11210245 | 452706400 | None | 11210245 | 2766 | 136616440 | 0.7734 | 240 | 1 | 2026-03-16 | C:\Mac\Documents\StaySearch\service\..\artifacts\bundle | False | 212828 | 10.5.1 |
 
 
 ## M6(b): flexible dates (`results/m6_flexdates.jsonl`)

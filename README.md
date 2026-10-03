@@ -100,7 +100,29 @@ features (does the stay fill a gap in the host's calendar) and guest history. **
   in about 100 ns, against 153 to 249 ns for a per-night scan as stays grow from 7 to 28 nights.
 - Flexible dates (plus or minus 3 days): one 49-window pass answers in 1.48 ms p50 against 42.7 ms
   for 49 separate searches, and grows the eligible set 1.6x at the median.
-<!-- EXP4-LATENCY -->
+- **Latency** (exp9, quiet 4-core mini PC, Ryzen 3 4300U, open-loop generator in the same JVM):
+  p50 1.5 to 2.0 ms and p99 3.5 to 4.9 ms end to end at 25 to 200 queries/s, with 1,000 real
+  updates/s applied; query tower about 0.15 to 0.3 ms, Lucene filter about 0.7 to 1.0 ms.
+- **IVF vs HNSW in Lucene under the real update stream (exp4, the headline).** Same 212,828
+  documents, every update rewrites its document, mean of 3 runs of 60 s:
+
+  | At 10,000 updates/s | IVF (cluster id as a filter) | HNSW (`KnnFloatVectorField`) |
+  |---|---|---|
+  | Updates sustained | 9,998/s (backlog 102) | 8,759/s, falling behind (backlog 74,387) |
+  | Index on disk | 23 MB | 280 MB |
+  | Merge time in the 60 s window | 4.9 s | 83.4 s |
+  | Query p50 / p99 | 2.3 / 19.6 ms | 4.0 / 42.0 ms |
+  | Recall@100 vs exact | 77.3% (nprobe 16) | 99.8% |
+  | Process RSS | 1,125 MB | 1,302 MB |
+  | Index build from scratch | 0.8 s | 27 s |
+
+  This is the trade-off 2601.06873 describes: the graph index pays for every rewrite in indexing
+  and merges and cannot keep up at the paper's 10,000/s (at our scale, on a 4-core box), while IVF
+  rewrites only an integer and keeps up, at a recall cost that nprobe buys back (exp3: 94% at
+  nprobe 32). Process memory differs far less than index size here because IVF keeps its vectors
+  on the JVM heap; the paper's memory argument maps to our 12x index size, not to RSS. The Lucene
+  IVF recall (77.3%) matches the Python measurement of the same setting (77.4%), a cross-check
+  between the two stacks.
 
 **Position bias (M5, SIMULATED).** On simulated examination and choice over real candidate lists,
 position as a DNN feature with dropout and zero at inference (KDD'20) did not recover the true
@@ -140,26 +162,35 @@ spreads 9% wider geographically and 10% wider in price for 2% of NDCG@10 (0.127 
 | Path | What |
 |---|---|
 | `staysearch/ingest/download.py` | Quarter discovery by probing, streaming gz to Parquet under a disk budget |
-| `staysearch/features.py` | Point-in-time listing features, S2 cells, amenities vocabulary |
-| `staysearch/labels.py` | Reviewed stays, reconstructed searches, splits, eligibility, trips, history |
-| `staysearch/updates.py` | The update stream from snapshot diffs |
+| `staysearch/features.py` | Point-in-time listing features, price carried forward, S2 cells, amenities vocabulary |
+| `staysearch/labels.py` | Reviewed stays, reconstructed searches, splits, eligibility with drop counts, trips, history |
+| `staysearch/updates.py` | The real update stream from snapshot diffs |
 | `staysearch/samplers.py` | Random, geo-hard, price-hard and model-mined negatives, false-negative guard |
-| `staysearch/train_towers.py`, `towers.py` | Two-tower model and training |
-| `staysearch/evaluate.py`, `baselines.py` | Point-in-time evaluation and the M1 baselines |
-| `service/` | The Kotlin service: Lucene index, availability store, ONNX models, experiments |
+| `staysearch/towers.py`, `train_towers.py` | Two-tower model, logQ-corrected in-batch softmax plus hard negatives |
+| `staysearch/evaluate.py`, `baselines.py`, `eval_towers.py` | Point-in-time evaluation, tie-aware metrics, bootstrap intervals, baselines |
+| `staysearch/ann.py` | exp3: clustering balance, IVF nprobe and HNSW efSearch sweeps, filtered recall, FAISS memory and removal |
+| `staysearch/ranking.py` | LambdaMART, pairwise DNN, DNN with history, replay recall, ONNX export |
+| `staysearch/export.py` | Writes the serving bundle the Kotlin service loads (`service/BUNDLE_FORMAT.md`) |
+| `staysearch/position_bias.py`, `diversity.py` | M5 (simulated) and M6 diversity |
+| `staysearch/numbers.py` | Generates `NUMBERS.md` from `results/*.jsonl` |
+| `service/` | Kotlin: Lucene index, availability store and query, ONNX models, update consumer, HTTP API, experiments (`service/README.md`) |
+| `ui/` | Map-and-list demo page served by the service |
 | `results/*.jsonl` | Every measurement, with machine and load |
 
 ## Reproduce
 
 ```bash
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
-python -m staysearch.ingest.download      # about 270 MB of Parquet for 10 cities x 4 snapshots
+python -m staysearch.ingest.download            # about 270 MB of Parquet for 10 cities x 4 snapshots
 python -m staysearch.features && python -m staysearch.labels && python -m staysearch.updates
-python -m staysearch.m0_report
-python -m staysearch.baselines
-python -m staysearch.train_towers --name mix_l2 --sampler mix --similarity l2
+python -m staysearch.m0_report && python -m staysearch.baselines
+python -m staysearch.train_towers --name mix_l2 --sampler mix --similarity l2   # and the other arms
+python -m staysearch.eval_towers --models mix_l2 && python -m staysearch.ann --models mix_l2
+python -m staysearch.ranking --tower mix_l2 && python -m staysearch.export --tower mix_l2
+python -m staysearch.position_bias && python -m staysearch.diversity && python -m staysearch.numbers
 pytest -q tests
-cd service && ./gradlew build
+cd service && ./gradlew build installDist        # JDK 21
+build/install/staysearch-service/bin/staysearch-service serve --bundle ../artifacts/bundle --static ../ui
 ```
 
 ## Data and license
@@ -168,3 +199,13 @@ Listing, calendar and review data: Inside Airbnb, https://insideairbnb.com/get-t
 under a Creative Commons Attribution 4.0 International License. The data is not in this repository;
 the download script fetches it. Inside Airbnb's assumptions page is the source for the review rate
 and length-of-stay figures used in the reconstruction.
+
+Data facts that shape the results, all measured and in `results/m0_data.jsonl`:
+- The March 2026 snapshot (the test snapshot) holds about 30% fewer listings than its neighbours
+  in every city, so 80,131 test stays were dropped because their listing was not in it, and many
+  "new listing" events in the update stream are listings that snapshot missed rather than new ones.
+- Point-in-time eligibility drops stays already closed in the snapshot's calendar (booked before
+  the search moment): 295,501 on test, against 209,523 kept.
+- 718,045 reviewers (8.5%) appear in more than one city, so reviewer ids are one id space and guest
+  history crosses cities.
+- 96.7% of trips are a single reviewed stay.

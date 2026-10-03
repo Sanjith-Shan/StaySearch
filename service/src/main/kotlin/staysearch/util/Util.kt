@@ -63,12 +63,19 @@ object Machine {
         null
     }
 
+    private val windows = System.getProperty("os.name").lowercase().contains("windows")
+    private val osBean get() = ManagementFactory.getOperatingSystemMXBean() as? com.sun.management.OperatingSystemMXBean
+
+    private fun ps(cmd: String): String? = sh("powershell", "-NoProfile", "-NonInteractive", "-Command", cmd)
+
     val info: Map<String, Any?> by lazy {
         val mac = System.getProperty("os.name").lowercase().contains("mac")
-        val cpu = if (mac) sh("sysctl", "-n", "machdep.cpu.brand_string")
-        else sh("sh", "-c", "grep -m1 'model name' /proc/cpuinfo | cut -d: -f2")?.trim()
-        val ram = if (mac) sh("sysctl", "-n", "hw.memsize")?.toLongOrNull()
-        else sh("sh", "-c", "grep MemTotal /proc/meminfo | awk '{print \$2*1024}'")?.toLongOrNull()
+        val cpu = when {
+            mac -> sh("sysctl", "-n", "machdep.cpu.brand_string")
+            windows -> ps("(Get-CimInstance Win32_Processor | Select-Object -First 1).Name")
+            else -> sh("sh", "-c", "grep -m1 'model name' /proc/cpuinfo | cut -d: -f2")?.trim()
+        }
+        val ram = osBean?.totalMemorySize
         mapOf(
             "cpu" to cpu,
             "cores" to Runtime.getRuntime().availableProcessors(),
@@ -79,15 +86,20 @@ object Machine {
         )
     }
 
+    /** Windows has no load average (the MXBean returns -1), so whole-machine CPU use is recorded too. */
     fun load(): Map<String, Any?> = mapOf(
         "loadavg_1m" to ManagementFactory.getOperatingSystemMXBean().systemLoadAverage,
-        "uptime" to sh("uptime"),
+        "system_cpu_load" to osBean?.cpuLoad,
+        "uptime" to if (windows) null else sh("uptime"),
         "at" to Instant.now().toString(),
     )
 
-    /** Resident set size of this process in bytes, from `ps -o rss=` (kilobytes). */
-    fun rssBytes(): Long? = sh("ps", "-o", "rss=", "-p", ProcessHandle.current().pid().toString())
-        ?.trim()?.toLongOrNull()?.times(1024)
+    /** Resident set size of this process in bytes: `ps -o rss=` (kilobytes), or the working set on Windows. */
+    fun rssBytes(): Long? {
+        val pid = ProcessHandle.current().pid().toString()
+        return if (windows) ps("(Get-Process -Id $pid).WorkingSet64")?.trim()?.toLongOrNull()
+        else sh("ps", "-o", "rss=", "-p", pid)?.trim()?.toLongOrNull()?.times(1024)
+    }
 
     /** Heap in use after a GC hint (best effort: System.gc twice with a short pause). */
     fun heapUsedAfterGc(): Long {
