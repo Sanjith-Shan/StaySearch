@@ -1,0 +1,9 @@
+[project]
+name = "staysearch"
+version = "0.1.0"
+description = "Offline pipeline for StaySearch: ingest, labels, two-tower retrieval, ranking, export"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
