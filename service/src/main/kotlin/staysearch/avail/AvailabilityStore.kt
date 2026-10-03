@@ -173,6 +173,26 @@ class AvailabilityStore(val horizon: Int, val capacity: Int) {
         }
     }
 
+    /**
+     * Open-night gaps around a stay `[checkin, checkout)`, read under one seqlock pass. Returns
+     * `gapBefore shl 16 or gapAfter` (unpack with [gapBeforeOf] and [gapAfterOf]), each capped at [cap].
+     * - gapBefore: consecutive open nights walking back from `checkin - 1`, stopping after night 0.
+     * - gapAfter: consecutive open nights starting at `checkout` (the run value, which is exact up to 255).
+     * Nights before night 0 or at or beyond the horizon count as closed.
+     */
+    fun gaps(row: Int, checkin: Int, checkout: Int, cap: Int): Int {
+        require(cap in 0..RUN_CAP) { "gap cap $cap out of range" }
+        return read(row) {
+            var before = 0
+            var d = checkin - 1
+            while (before < cap && d >= 0 && d < horizon && isOpenUnsynced(row, d)) {
+                before++; d--
+            }
+            val after = if (checkout in 0 until horizon) minOf(runAt(row, checkout), cap) else 0
+            (before shl 16) or after
+        }
+    }
+
     /** The raw run value (saturated at 255) for tests and the listing endpoint. */
     fun runValue(row: Int, night: Int): Int = read(row) { runAt(row, night) }
 
@@ -188,6 +208,9 @@ class AvailabilityStore(val horizon: Int, val capacity: Int) {
 
     companion object {
         const val RUN_CAP = 255
+
+        fun gapBeforeOf(packed: Int): Int = packed ushr 16
+        fun gapAfterOf(packed: Int): Int = packed and 0xFFFF
     }
 }
 

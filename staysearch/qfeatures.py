@@ -11,7 +11,8 @@ import numpy as np
 
 Q_FEAT_DIM = 87
 HIST_DIM = 70  # has_history, price mean, 4 room-type shares, 64-d mean embedding
-N_CROSS = 12
+N_CROSS = 15
+GAP_CAP = 28
 LEAD_EDGES = np.array([1, 7, 14, 30, 60])  # bucket b holds lead <= edge[b]; last bucket is >= 61
 ORDINAL_EPOCH = dt.date(1, 1, 1).toordinal()
 
@@ -66,8 +67,35 @@ def haversine_km(lat1, lng1, lat2, lng2):
     return 2 * r * np.arcsin(np.sqrt(np.clip(a, 0, 1)))
 
 
+def gaps(open_rows: np.ndarray, a: int, b: int, cap: int = GAP_CAP) -> tuple[np.ndarray, np.ndarray]:
+    """Open nights immediately before night a and from night b on (each capped), per row.
+
+    `open_rows` is [n, horizon] bool with day 0 = the calendar's first night; nights outside the
+    calendar count as closed, so a stay starting on day 0 has no gap before it.
+    """
+    n, h = open_rows.shape
+    before = np.zeros(n, np.int64)
+    alive = np.ones(n, bool)
+    for k in range(1, cap + 1):
+        d = a - k
+        if d < 0:
+            break
+        alive &= open_rows[:, d] if d < h else False
+        before += alive
+    after = np.zeros(n, np.int64)
+    alive = np.ones(n, bool)
+    for k in range(cap):
+        d = b + k
+        if d >= h:
+            break
+        alive &= open_rows[:, d]
+        after += alive
+    return before, after
+
+
 def cross_features(retrieval_dist, l_lat, l_lng, l_price, l_min_nights, l_accommodates, l_room_type,
-                   l_emb, p_lat, p_lng, p_area, guests, nights, lead_days, hist) -> np.ndarray:
+                   l_emb, p_lat, p_lng, p_area, guests, nights, lead_days, hist,
+                   gap_before=None, gap_after=None, retrieval_rank=None, k: int = 100) -> np.ndarray:
     """The 12 ranker cross features for one query (scalars) against candidate arrays.
 
     `hist` is the query's 70-d history block (zeros without history).
@@ -90,4 +118,8 @@ def cross_features(retrieval_dist, l_lat, l_lng, l_price, l_min_nights, l_accomm
     x[:, 8] = np.log1p(max(lead_days, 0)) / np.log(366.0)
     x[:, 9] = np.log1p(nights) / np.log(31.0)
     x[:, 10] = guests / 16.0
+    if gap_before is not None:
+        x[:, 12] = np.log1p(gap_before) / np.log1p(GAP_CAP)
+        x[:, 13] = np.log1p(gap_after) / np.log1p(GAP_CAP)
+    x[:, 14] = np.log1p(retrieval_rank if retrieval_rank is not None else np.argsort(np.argsort(retrieval_dist, kind="stable"), kind="stable")) / np.log1p(k)
     return x

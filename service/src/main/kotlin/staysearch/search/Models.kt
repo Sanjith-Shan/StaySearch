@@ -20,7 +20,11 @@ class Models(bundle: Bundle, intraOpThreads: Int = 1) : AutoCloseable {
     }
     val dim = bundle.manifest.dim
     val qFeatDim = bundle.manifest.qFeatDim
-    val rankerWidth = bundle.manifest.rankerFeatDim
+    val rankerWidth = bundle.manifest.rankerFeatDim.also {
+        require(it == bundle.manifest.listingStaticDim + Features.N_CROSS) {
+            "ranker_feat_dim $it != listing_static_dim ${bundle.manifest.listingStaticDim} + ${Features.N_CROSS} cross features"
+        }
+    }
 
     private val queryTower: OrtSession = env.createSession(
         requireNotNull(bundle.modelPath("query_tower")) { "query tower model missing" }.toString(), opts,

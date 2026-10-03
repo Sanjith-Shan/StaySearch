@@ -125,17 +125,22 @@ class SearchPipeline(
 ) {
     val stats = StageStats()
 
+    companion object {
+        const val DEFAULT_K_NO_RANKER = 500
+    }
+
     fun search(req: SearchRequest, record: Boolean = true): SearchResponse {
         val t0 = System.nanoTime()
         val mode = Mode.parse(req.mode)
-        require(req.k in 1..100_000) { "k out of range" }
+        val k = retrievalK(req)
+        require(k in 1..100_000) { "k out of range" }
         require(req.t >= 0) { "t must be >= 0" }
         if (req.ranker != "none") require(req.ranker in models.rankerNames) { "ranker '${req.ranker}' not available (have ${models.rankerNames} and none)" }
         val ctx = Features.resolve(req, bundle)
         val qemb = models.embedQuery(ctx.placeIdx, Features.queryFeatures(ctx, bundle.manifest.qFeatDim))
         val t1 = System.nanoTime()
         val timing = LongArray(3) // probe, filter, distance (ns)
-        val r = retrieve(ctx, qemb, mode, req.k, req.nprobe, req.flexible, timing)
+        val r = retrieve(ctx, qemb, mode, k, req.nprobe, req.flexible, timing)
         val t4 = System.nanoTime()
 
         val order: IntArray
@@ -147,7 +152,9 @@ class SearchPipeline(
             val w = models.rankerWidth
             val n = r.rows.size
             val x = FloatArray(n * w)
-            for (i in 0 until n) Features.rankerRow(ctx, table, r.rows[i], Features.distanceDouble(qemb, table, r.rows[i]).toFloat(), x, i * w)
+            val rankK = bundle.manifest.rankerRankK
+            // r.rows is in retrieval order (distance ascending, ties by row), so i is the rank.
+            for (i in 0 until n) Features.rankerRow(ctx, table, r.rows[i], Features.distanceDouble(qemb, table, r.rows[i]).toFloat(), i, rankK, x, i * w)
             scores = models.score(req.ranker, x, n)
             order = (0 until n).sortedByDescending { scores[it] }.take(req.t).toIntArray()
         }
@@ -168,6 +175,9 @@ class SearchPipeline(
         if (record) stats.record(timings)
         return SearchResponse(mode.name.lowercase(), req.ranker, ctx.placeIdx, ctx.nights, r.nCandidates, r.rows.size, timings, results)
     }
+
+    /** The request's retrieval K: explicit, else ranker_rank_k when a ranker runs (serving matches training), else [DEFAULT_K_NO_RANKER]. */
+    fun retrievalK(req: SearchRequest): Int = req.k ?: if (req.ranker != "none") bundle.manifest.rankerRankK else DEFAULT_K_NO_RANKER
 
     /** The Lucene filter for a request: box, guests, nights (unless flexible) and availability, plus optional clusters. */
     fun filterQuery(ctx: QueryContext, clusters: IntArray?, flexible: Boolean): Query {

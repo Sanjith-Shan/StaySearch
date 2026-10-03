@@ -2,6 +2,7 @@ package staysearch.cli
 
 import staysearch.bundle.Bundle
 import staysearch.bundle.GuestHistory
+import staysearch.search.SearchPipeline
 import staysearch.util.Json
 
 /** Payloads of the small read-only endpoints (`/meta`, `/sample-guests`), kept apart from Ktor so they are easy to test. */
@@ -23,7 +24,14 @@ object ServeInfo {
             "synthetic" to m.synthetic,
             "rankers" to rankers.sorted() + "none",
             "modes" to (if (hnsw) listOf("ivf", "hnsw", "exact") else listOf("ivf", "exact")),
-            "defaults" to mapOf("k" to 500, "t" to 25, "nprobe" to 16, "mode" to "ivf", "ranker" to if ("dnn" in rankers) "dnn" else rankers.firstOrNull() ?: "none"),
+            "defaults" to run {
+                val ranker = if ("dnn" in rankers) "dnn" else rankers.firstOrNull() ?: "none"
+                mapOf(
+                    "k" to if (ranker != "none") m.rankerRankK else SearchPipeline.DEFAULT_K_NO_RANKER,
+                    "k_with_ranker" to m.rankerRankK, "k_without_ranker" to SearchPipeline.DEFAULT_K_NO_RANKER,
+                    "t" to 25, "nprobe" to 16, "mode" to "ivf", "ranker" to ranker,
+                )
+            },
             "flex_days" to FlexDates.FLEX,
         )
     }

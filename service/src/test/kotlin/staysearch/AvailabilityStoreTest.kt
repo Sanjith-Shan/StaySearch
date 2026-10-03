@@ -173,4 +173,34 @@ class AvailabilityStoreTest {
         stop.set(true); writer.join()
         assertEquals(0, bad.get())
     }
+
+    @Test
+    fun `gaps match a brute-force walk, edges included`() {
+        val rnd = Random(11)
+        val store = AvailabilityStore(horizon, 4)
+        val cap = 28
+        for (row in 0 until 4) {
+            // Long open stretches (row 3 fully open) so the cap and the horizon edges are exercised.
+            val open = BooleanArray(horizon) { if (row == 3) true else rnd.nextInt(10) < 8 + (row % 2) }
+            store.load(row, pack(open))
+            fun before(a: Int): Int {
+                var n = 0; var d = a - 1
+                while (n < cap && d >= 0 && d < horizon && open[d]) { n++; d-- }
+                return n
+            }
+            fun after(b: Int): Int {
+                var n = 0; var d = b
+                while (n < cap && d >= 0 && d < horizon && open[d]) { n++; d++ }
+                return n
+            }
+            for (a in listOf(-3, 0, 1, 2, 27, 28, 29, 100, horizon - 1, horizon, horizon + 1, horizon + 5) + (0 until 60).map { rnd.nextInt(horizon) }) {
+                for (b in listOf(a + 1, a + 3, horizon - 1, horizon, horizon + 2)) {
+                    if (b <= a) continue
+                    val g = store.gaps(row, a, b, cap)
+                    assertEquals(before(a), AvailabilityStore.gapBeforeOf(g), "before row=$row a=$a")
+                    assertEquals(after(b), AvailabilityStore.gapAfterOf(g), "after row=$row b=$b")
+                }
+            }
+        }
+    }
 }

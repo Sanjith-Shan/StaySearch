@@ -4,8 +4,9 @@ Decisions taken where `BUNDLE_FORMAT.md` was silent or ambiguous. Python (`stays
 follows the same choices.
 
 1. **Golden file layouts.** `query_features.jsonl`: `{"request", "place_idx" (resolved), "qfeat"}`.
-   `ranker_features.jsonl`: `{"request", "qemb", "listing_id", "x"}` (`qemb` included so the test does
-   not depend on ONNX numerics). `request` uses the `/search` names: `place_idx`, `bbox`
+   `ranker_features.jsonl`: `{"request", "qemb", "listing_id", "rank", "x"}` (`qemb` included so the test does
+   not depend on ONNX numerics; `rank` is the 0-based retrieval rank used for cross feature 14, since it
+   depends on the candidate list; `x` has width `listing_static_dim + 15`). `request` uses the `/search` names: `place_idx`, `bbox`
    (`{min_lat, min_lng, max_lat, max_lng}` or null), `checkin`, `checkout`, `guests`, `guest_id`, `search_date`.
 2. **Search area.** A place search uses the place's bbox, its `(lat, lng)` as the centre and its
    `area_km2`; feature 1 is 1 only for a city place. A bbox search uses the bbox centre and its
@@ -29,3 +30,15 @@ follows the same choices.
 15. Tolerance: an absolute 1e-5 is finer than float32 resolution for cross feature 0 (a squared
     distance between 128 and 256 has float32 spacing of about 1.5e-5). Tests use
     `max(1e-5, 1e-6 * |expected|)`, and the service computes feature 0 in double before the cast.
+16. Cross features 12 and 13 (gaps) are capped at 28 nights. gap_before walks back from `checkin - 1`
+    and stops after night 0; gap_after starts at the checkout night. Nights before night 0 or at or
+    beyond the horizon are closed. The service reads them from the live availability store under the
+    row's seqlock (gap_after is `min(run[checkout], 28)`, exact because 28 < 255), so updates applied
+    since load are reflected; golden rows use the bundle's availability with no updates.
+17. Cross feature 14 is `ln(1 + min(rank, K)) / ln(1 + K)` with `K = manifest.ranker_rank_k` (default
+    100) and rank the 0-based position in the retrieval top K (distance ascending, ties by row index,
+    the order `topK` returns). A negative rank is treated as 0.
+18. `/search` `k` defaults to `ranker_rank_k` when a ranker is used and to 500 with `ranker: "none"`;
+    an explicit `k` always wins. `/meta` reports the effective default and both values. The
+    experiment CLIs (`latency`, `replay-invariant`, `exp4`, `flexdates`) keep their explicit `--k 500` default.
+19. Models refuses to start if `ranker_feat_dim != listing_static_dim + 15`.

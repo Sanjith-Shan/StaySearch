@@ -6,7 +6,7 @@ Kotlin service can be built and tested before the real offline pipeline produces
 measured on it is a result.
 
 The section "Reference feature code" below is the Python definition of the query features
-(qfeat 0..16) and the 12 ranker cross features. It is deliberately plain and self-contained so the
+(qfeat 0..16) and the 15 ranker cross features. It is deliberately plain and self-contained so the
 offline pipeline can copy it; the golden files it writes are what the Kotlin tests compare against.
 
 Usage: python make_fake_bundle.py --out DIR [--listings 5000] [--seed 7]
@@ -33,8 +33,11 @@ import torch.nn as nn
 
 DIM = 64
 Q_FEAT_DIM = 87
-LISTING_STATIC_DIM = 28
-RANKER_FEAT_DIM = LISTING_STATIC_DIM + 12
+LISTING_STATIC_DIM = 30
+N_CROSS = 15
+RANKER_FEAT_DIM = LISTING_STATIC_DIM + N_CROSS
+GAP_CAP = 28  # cross features 12 and 13 cap the open-night gap here
+RANK_K = 100  # the retrieval K the rankers were trained with; cross feature 14 clamps the rank here
 HORIZON_DAYS = 448
 GUEST_BLOCK = 70  # has_history, hist_log_price_mean_norm, 4 room-type mix, 64 hist_vec
 KM_PER_DEG_LAT = 111.32
@@ -153,9 +156,29 @@ def retrieval_distance(qemb: np.ndarray, emb: np.ndarray, similarity: str) -> fl
     return float(-np.dot(q, e))
 
 
+def gaps(open_nights: np.ndarray, a: int, b: int, cap: int = GAP_CAP) -> tuple[int, int]:
+    """Open nights immediately before night a (walking back from a - 1, stopping after night 0) and
+    from night b on, each capped at `cap`. `open_nights` is one listing's calendar (night 0 =
+    base_date); nights before night 0 or at or beyond the horizon count as closed."""
+    h = len(open_nights)
+    before = 0
+    d = a - 1
+    while before < cap and 0 <= d < h and open_nights[d]:
+        before += 1
+        d -= 1
+    after = 0
+    d = b
+    while after < cap and 0 <= d < h and open_nights[d]:
+        after += 1
+        d += 1
+    return before, after
+
+
 def ranker_cross_features(req, listing, emb, qemb, places, guest_ids, guest_feats, as_of,
-                          similarity) -> np.ndarray:
-    """The 12 cross features appended to ranker_static[i]. `listing` is a listings.jsonl dict."""
+                          similarity, open_nights, base_date, rank, rank_k=RANK_K) -> np.ndarray:
+    """The 15 cross features appended to ranker_static[i]. `listing` is a listings.jsonl dict,
+    `open_nights` its calendar as loaded (no updates), `rank` its 0-based position in the retrieval
+    top K (distance ascending), `rank_k` the manifest's ranker_rank_k."""
     area = resolve_search_area(req, places)
     checkin, checkout = parse_date(req["checkin"]), parse_date(req["checkout"])
     nights = (checkout - checkin).days
@@ -164,7 +187,7 @@ def ranker_cross_features(req, listing, emb, qemb, places, guest_ids, guest_feat
     g = guest_block(req.get("guest_id"), guest_ids, guest_feats).astype(np.float64)
     has_hist = g[0] > 0.5
     price = listing["price"]
-    x = np.zeros(12, dtype=np.float64)
+    x = np.zeros(N_CROSS, dtype=np.float64)
     x[0] = retrieval_distance(qemb, emb, similarity)
     x[1] = haversine_km(listing["lat"], listing["lng"], area["centre_lat"], area["centre_lng"]) \
         / math.sqrt(1.0 + area["area_km2"])
@@ -178,6 +201,11 @@ def ranker_cross_features(req, listing, emb, qemb, places, guest_ids, guest_feat
     x[9] = math.log1p(nights) / math.log(31.0)
     x[10] = guests / 16.0
     x[11] = g[2 + listing["room_type"]] if has_hist else 0.0
+    base = parse_date(base_date)
+    gb, ga = gaps(open_nights, (checkin - base).days, (checkout - base).days)
+    x[12] = math.log1p(gb) / math.log1p(GAP_CAP)
+    x[13] = math.log1p(ga) / math.log1p(GAP_CAP)
+    x[14] = math.log1p(min(max(rank, 0), rank_k)) / math.log1p(rank_k)
     return x.astype(np.float32)
 
 
@@ -315,6 +343,11 @@ def main():
     cluster_ids = d2.argmin(1).astype(np.int32)
 
     cal = np.stack([random_calendar(rng) for _ in range(N)])
+    # Some long open stretches so the gap features reach their cap (and run values pass 255).
+    long_open = np.arange(0, N, 40)
+    cal[long_open] = True
+    cal[np.arange(20, N, 40), :60] = True
+    cal[np.arange(20, N, 40), -60:] = True
     static = rng.normal(0, 1, size=(N, LISTING_STATIC_DIM)).astype(np.float32)
 
     # Guest history: sorted ids, rows of 70 floats.
@@ -423,6 +456,15 @@ def main():
             "search_date": None if j % 3 == 0 else (ci - dt.timedelta(days=int(rng.integers(0, 120)))).isoformat(),
         })
 
+    # Calendar edges for the gap features: check-in at night 0 and 1, check-out at or past the horizon.
+    for a, b in [(0, 2), (1, 4), (2, 3), (29, 31), (440, 447), (443, 448), (446, 450), (448, 451), (450, 452)]:
+        p = places[int(rng.integers(0, len(places)))]
+        golden_reqs.append({
+            "place_idx": p["idx"], "checkin": (base + dt.timedelta(days=a)).isoformat(),
+            "checkout": (base + dt.timedelta(days=b)).isoformat(), "guests": int(rng.integers(1, 4)),
+            "guest_id": None, "search_date": None,
+        })
+
     with open(os.path.join(out, "golden", "query_features.jsonl"), "w") as fq, \
             open(os.path.join(out, "golden", "ranker_features.jsonl"), "w") as fr, \
             open(os.path.join(out, "golden", "parity_queries.jsonl"), "w") as fp:
@@ -433,14 +475,20 @@ def main():
                 qemb = qt(torch.tensor([pidx]), torch.tensor(qf[None, :]))[0].numpy()
             fp.write(json.dumps({"place_idx": pidx, "qfeat": [float(v) for v in qf],
                                  "qemb": [float(v) for v in qemb]}) + "\n")
-            for i in rng.choice(N, 3, replace=False):
-                l = listings[int(i)]
+            picks = list(rng.choice(N, 3, replace=False)) + [int(rng.choice(long_open)), int(rng.choice(long_open)) + 20]
+            for i in picks:
+                i = int(i) % N
+                l = listings[i]
                 if req["guests"] > l["accommodates"]:
                     continue  # the ranker only ever sees listings that fit the party
-                cross = ranker_cross_features(req, l, emb[i], qemb, places, gids, gfeat, as_of, similarity)
+                # The rank depends on the candidate list, so the golden row carries it (it may exceed
+                # RANK_K; the feature clamps it).
+                rank = int(rng.integers(0, 130))
+                cross = ranker_cross_features(req, l, emb[i], qemb, places, gids, gfeat, as_of, similarity,
+                                              cal[i], base_date, rank)
                 x = np.concatenate([static[i], cross])
                 fr.write(json.dumps({"request": req, "qemb": [float(v) for v in qemb], "listing_id": l["id"],
-                                     "x": [float(v) for v in x]}) + "\n")
+                                     "rank": rank, "x": [float(v) for v in x]}) + "\n")
         # Extra parity rows over random inputs (any place, random qfeat).
         for _ in range(200):
             pidx = int(rng.integers(0, len(places)))
@@ -454,7 +502,7 @@ def main():
         "version": 1, "as_of": as_of, "base_date": base_date, "horizon_days": HORIZON_DAYS,
         "n_listings": N, "dim": DIM, "similarity": similarity, "n_clusters": args.clusters,
         "n_places": len(places), "q_feat_dim": Q_FEAT_DIM, "listing_static_dim": LISTING_STATIC_DIM,
-        "ranker_feat_dim": RANKER_FEAT_DIM,
+        "ranker_feat_dim": RANKER_FEAT_DIM, "ranker_rank_k": RANK_K,
         "models": {"query_tower": "query_tower.onnx", "ranker": "ranker.onnx", "ranker_gbdt": "ranker_gbdt.onnx"},
         "cities": [c[0] for c in cities],
         "synthetic": True,

@@ -32,7 +32,10 @@ HIST_CROSS = [5, 6, 7, 11]  # cross-feature offsets that carry guest history
 def listing_static(s: Snapshot) -> np.ndarray:
     room = np.eye(4, dtype=np.float32)[s.room_type]
     amen = (s.amen.sum(1, keepdims=True) / 50.0).astype(np.float32)
-    return np.concatenate([s.num, s.missing, room, amen], 1).astype(np.float32)
+    lr = s.last_review_days
+    recency = np.where(np.isnan(lr), 0.0, np.log1p(np.clip(lr, 0, None)) / 7.0)[:, None]
+    never = np.isnan(lr)[:, None].astype(np.float32)
+    return np.concatenate([s.num, s.missing, room, amen, recency, never], 1).astype(np.float32)
 
 
 class Candidates:
@@ -70,14 +73,17 @@ class Candidates:
                 # Training lists keep only queries whose positive retrieval actually found. Forcing a
                 # missed positive into the list makes it the farthest candidate, a leak (BUG_LOG #6).
                 continue
-            self.full.append((rows, d))
+            if not include_positive:
+                self.full.append((rows, d))
             self.in_k.append(hit)
             self.kept.append(j)
             p = q["place_idx"][i]
+            a0 = int(q["recon_checkin"][i] - s.snap_ord[cand[0]])
+            gb, ga = qf.gaps(s.open[cand], a0, a0 + int(q["recon_nights"][i]))
             cross = qf.cross_features(cd, s.lat[cand], s.lng[cand], s.price[cand], s.min_nights[cand],
                                       s.accommodates[cand], s.room_type[cand], emb[cand], P["lat"][p], P["lng"][p],
                                       P["area_km2"][p], int(q["recon_guests"][i]), int(q["recon_nights"][i]),
-                                      int(q["lead_days"][i]), qfeat[j, 17:])
+                                      int(q["lead_days"][i]), qfeat[j, 17:], gb, ga, np.arange(len(cand)), K)
             self.X.append(np.concatenate([static[cand], cross], 1))
             self.y.append((cand == pos).astype(np.float32))
             self.group.append(len(cand))
@@ -217,10 +223,14 @@ def replay_recall(c: Candidates, ranker_fn, retrieval: dict, history: bool) -> d
     for j, (rows, d) in enumerate(c.full):
         i = idx[j]
         p = q["place_idx"][i]
+        a0 = int(q["recon_checkin"][i] - s.snap_ord[rows[0]]) if len(rows) else 0
+        gb, ga = qf.gaps(s.open[rows], a0, a0 + int(q["recon_nights"][i]))
+        rank = np.empty(len(rows), np.int64)
+        rank[np.argsort(d, kind="stable")] = np.arange(len(rows))
         cross = qf.cross_features(d, s.lat[rows], s.lng[rows], s.price[rows], s.min_nights[rows],
                                   s.accommodates[rows], s.room_type[rows], c.emb[rows], P["lat"][p], P["lng"][p],
                                   P["area_km2"][p], int(q["recon_guests"][i]), int(q["recon_nights"][i]),
-                                  int(q["lead_days"][i]), c.qfeat[j, 17:])
+                                  int(q["lead_days"][i]), c.qfeat[j, 17:], gb, ga, np.minimum(rank, c.K), c.K)
         X = np.concatenate([c.static[rows], cross], 1)
         if not history:
             X[:, [c.static_dim + h for h in HIST_CROSS]] = 0.0

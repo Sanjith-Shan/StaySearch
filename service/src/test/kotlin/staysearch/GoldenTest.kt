@@ -50,10 +50,14 @@ class GoldenTest {
             val ctx = Features.resolve(req, b)
             val qemb = FloatArray(b.manifest.dim) { row["qemb"][it].floatValue() }
             val r = requireNotNull(table.rowOf(row["listing_id"].asLong()))
+            // rank (feature 14) depends on the candidate list, so the golden row carries it; gaps
+            // (12, 13) come from the bundle's availability as loaded (no updates applied).
+            val rank = requireNotNull(row["rank"]?.takeIf { it.isInt }) { "golden ranker row without an int rank: $row" }.asInt()
             val x = FloatArray(w)
-            Features.rankerRow(ctx, table, r, Features.distanceDouble(qemb, table, r).toFloat(), x, 0)
+            Features.rankerRow(ctx, table, r, Features.distanceDouble(qemb, table, r).toFloat(), rank, b.manifest.rankerRankK, x, 0)
             val g = row["x"]
-            assertEquals(g.size(), w)
+            assertEquals(b.manifest.listingStaticDim + Features.N_CROSS, w, "ranker_feat_dim")
+            assertEquals(w, g.size(), "golden x width")
             for (i in 0 until w) assertTrue(close(g[i].asDouble(), x[i].toDouble())) { "x[$i] for listing ${row["listing_id"]}, $req: expected ${g[i]}, got ${x[i]}" }
             n++
         }

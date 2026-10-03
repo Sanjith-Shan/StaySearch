@@ -29,7 +29,7 @@ from staysearch.ranking import listing_static
 from staysearch.towers import embed_listings
 from staysearch.updates import BUNDLE_HORIZON, TYPES, base_date
 
-D0 = dt.date(1, 1, 1).toordinal() - 1  # ordinal -> date helper offset
+RANK_K = 100  # the K the rankers were trained with; feature 14 clamps rank at it
 
 
 def iso(ordinal: int) -> str:
@@ -195,12 +195,16 @@ def main() -> None:
                 co = dt.date.fromisoformat(r["checkout"]).toordinal()
                 sd = dt.date.fromisoformat(r["search_date"]).toordinal()
                 d = float(((emb[c].astype(np.float64) - QE[j]) ** 2).sum()) if metric == "l2" else -float(emb[c] @ QE[j])
+                rank = int(rng.integers(0, 130))
+                a0 = ci - int(s3.snap_ord[c])
+                gb, ga = qf.gaps(s3.open[[c]], a0, a0 + (co - ci))
                 cross = qf.cross_features(np.array([d]), s3.lat[[c]], s3.lng[[c]], s3.price[[c]], s3.min_nights[[c]],
                                           s3.accommodates[[c]], s3.room_type[[c]], emb[[c]], P["lat"][p], P["lng"][p],
-                                          P["area_km2"][p], r["guests"], co - ci, ci - sd, Q[j, 17:])[0]
+                                          P["area_km2"][p], r["guests"], co - ci, ci - sd, Q[j, 17:], gb, ga,
+                                          np.array([min(rank, RANK_K)]), RANK_K)[0]
                 req = {k: r[k] for k in ("place_idx", "checkin", "checkout", "guests", "guest_id", "search_date")}
                 f.write(json.dumps({"request": {**req, "bbox": None}, "qemb": QE[j].tolist(),
-                                    "listing_id": int(s3.listing_id[c]),
+                                    "listing_id": int(s3.listing_id[c]), "rank": rank,
                                     "x": np.concatenate([static[c], cross]).tolist()}) + "\n")
 
     # Models.
@@ -249,7 +253,7 @@ def main() -> None:
                 "ranker_feat_dim": int(static.shape[1] + qf.N_CROSS),
                 "models": {"query_tower": "query_tower.onnx", "ranker": "ranker.onnx", "ranker_gbdt": "ranker_gbdt.onnx"},
                 "cities": list(CITIES), "synthetic": False, "tower": args.tower, "ranker_name": args.ranker,
-                "gbdt_name": args.gbdt, "snapshot": "S3", "n_guests_with_history": int(len(guests)),
+                "gbdt_name": args.gbdt, "snapshot": "S3", "ranker_rank_k": RANK_K, "n_guests_with_history": int(len(guests)),
                 "updates_written": n_written}
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1))
     print(json.dumps(manifest, indent=1))

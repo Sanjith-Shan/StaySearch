@@ -158,7 +158,7 @@ object Exp4 {
     fun recallAt100(eng: Engine, q: staysearch.search.SearchRequest, mode: Mode): Double? {
         val ctx = Features.resolve(q, eng.bundle)
         val qemb = eng.models.embedQuery(ctx.placeIdx, Features.queryFeatures(ctx, eng.bundle.manifest.qFeatDim))
-        val got = eng.pipeline.retrieve(ctx, qemb, mode, q.k, q.nprobe, q.flexible).rows.take(100).toSet()
+        val got = eng.pipeline.retrieve(ctx, qemb, mode, eng.pipeline.retrievalK(q), q.nprobe, q.flexible).rows.take(100).toSet()
         val exact = eng.pipeline.retrieve(ctx, qemb, Mode.EXACT, 100, q.nprobe, q.flexible).rows
         if (exact.isEmpty()) return null
         return exact.count { it in got }.toDouble() / exact.size

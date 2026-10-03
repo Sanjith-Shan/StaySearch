@@ -1,5 +1,6 @@
 package staysearch.search
 
+import staysearch.avail.AvailabilityStore
 import staysearch.bundle.Box
 import staysearch.bundle.Bundle
 import staysearch.bundle.GuestHistory
@@ -25,7 +26,8 @@ data class SearchRequest(
     val guests: Int = 1,
     val guestId: Long? = null,
     val searchDate: LocalDate? = null,
-    val k: Int = 500,
+    /** Retrieval top K. Null means the default: the manifest's ranker_rank_k (100) with a ranker, 500 without. */
+    val k: Int? = null,
     val t: Int = 25,
     val mode: String = "ivf",
     val nprobe: Int = 16,
@@ -61,8 +63,12 @@ class QueryContext(
 object Features {
     const val KM_PER_DEG_LAT = 111.32
     const val EARTH_RADIUS_KM = 6371.0
-    const val N_CROSS = 12
+    const val N_CROSS = 15
+
+    /** Gap features 12 and 13 cap the open-night gap at this many nights. */
+    const val GAP_CAP = 28
     private val LN31 = ln(31.0)
+    private val LN_GAP = ln1p(GAP_CAP.toDouble())
     private val LN366 = ln(366.0)
 
     fun haversineKm(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
@@ -146,10 +152,13 @@ object Features {
     }
 
     /**
-     * Writes the ranker row for [row]: ranker_static then the 12 cross features, into [out] at [offset].
-     * [distance] is the retrieval distance (squared L2, or minus the dot product).
+     * Writes the ranker row for [row]: ranker_static then the 15 cross features, into [out] at [offset].
+     * [distance] is the retrieval distance (squared L2, or minus the dot product). [rank] is the
+     * candidate's 0-based position in the retrieval top K (distance ascending); feature 14 clamps it
+     * to [0, rankK], where [rankK] is the K the rankers were trained with (manifest `ranker_rank_k`).
+     * Gap features 12 and 13 read the availability store's current state.
      */
-    fun rankerRow(ctx: QueryContext, table: ListingTable, row: Int, distance: Float, out: FloatArray, offset: Int) {
+    fun rankerRow(ctx: QueryContext, table: ListingTable, row: Int, distance: Float, rank: Int, rankK: Int, out: FloatArray, offset: Int) {
         val sd = table.staticDim
         System.arraycopy(table.static, row * sd, out, offset, sd)
         val o = offset + sd
@@ -173,6 +182,10 @@ object Features {
         out[o + 9] = (ln1p(ctx.nights.toDouble()) / LN31).toFloat()
         out[o + 10] = (ctx.guests / 16.0).toFloat()
         out[o + 11] = if (h) g[2 + table.roomType[row].coerceIn(0, 3)] else 0f
+        val gaps = table.store.gaps(row, ctx.checkinNight, ctx.checkoutNight, GAP_CAP)
+        out[o + 12] = (ln1p(AvailabilityStore.gapBeforeOf(gaps).toDouble()) / LN_GAP).toFloat()
+        out[o + 13] = (ln1p(AvailabilityStore.gapAfterOf(gaps).toDouble()) / LN_GAP).toFloat()
+        out[o + 14] = (ln1p(rank.coerceIn(0, rankK).toDouble()) / ln1p(rankK.toDouble())).toFloat()
     }
 
     /** Retrieval distance computed in double precision (for the golden test's tolerance). */

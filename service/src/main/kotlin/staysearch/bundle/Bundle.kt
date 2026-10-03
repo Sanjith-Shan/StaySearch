@@ -24,6 +24,8 @@ data class Manifest(
     val qFeatDim: Int,
     val listingStaticDim: Int,
     val rankerFeatDim: Int,
+    /** The retrieval K the rankers were trained with; cross feature 14 clamps the rank at it. */
+    val rankerRankK: Int,
     val models: Map<String, String>,
     val cities: List<String>,
     val synthetic: Boolean,
@@ -42,6 +44,7 @@ data class Manifest(
             qFeatDim = n["q_feat_dim"].asInt(),
             listingStaticDim = n["listing_static_dim"].asInt(),
             rankerFeatDim = n["ranker_feat_dim"].asInt(),
+            rankerRankK = (n["ranker_rank_k"]?.takeIf { !it.isNull }?.asInt() ?: 100).also { require(it >= 1) { "ranker_rank_k must be >= 1" } },
             models = n["models"]?.properties()?.associate { it.key to it.value.asText() } ?: emptyMap(),
             cities = n["cities"]?.map { it.asText() } ?: emptyList(),
             synthetic = n["synthetic"]?.asBoolean() ?: false,

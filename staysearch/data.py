@@ -38,6 +38,7 @@ class Snapshot:
     price: np.ndarray
     ltm: np.ndarray
     rating: np.ndarray
+    last_review_days: np.ndarray  # days from last review to the snapshot date, NaN if never reviewed
     s2: np.ndarray            # [n, 3] vocab indices for levels 10, 12, 14
     num: np.ndarray           # [n, 27] standardized
     missing: np.ndarray       # [n, 3]
@@ -81,6 +82,8 @@ def load_snapshot(rank: int) -> Snapshot:
         min_nights=g("min_nights").astype(np.int64), max_nights=g("max_nights").astype(np.int64),
         price=g("price").astype(np.float64), ltm=g("number_of_reviews_ltm").astype(np.float64),
         rating=g("review_scores_rating").astype(np.float64),
+        last_review_days=(g("days_since_last_review").astype(np.float64) if "days_since_last_review" in t.column_names
+                          else np.full(t.num_rows, np.nan)),
         s2=np.stack([g("s2_10_idx"), g("s2_12_idx"), g("s2_14_idx")], 1).astype(np.int64),
         num=np.stack(t.column("num").to_numpy(zero_copy_only=False)).astype(np.float32),
         missing=np.stack(t.column("missing").to_numpy(zero_copy_only=False)).astype(np.float32),

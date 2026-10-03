@@ -70,7 +70,8 @@ val fakeBundle = tasks.register<Exec>("fakeBundle") {
 tasks.test {
     dependsOn(fakeBundle)
     useJUnitPlatform()
-    systemProperty("staysearch.fakeBundle", fakeBundleDir.get().asFile.absolutePath)
+    // -PtestBundle=DIR points the golden and invariant tests at a real bundle instead of the fake one.
+    systemProperty("staysearch.fakeBundle", (project.findProperty("testBundle") as String?) ?: fakeBundleDir.get().asFile.absolutePath)
     maxHeapSize = "2g"
     jvmArgs("--enable-native-access=ALL-UNNAMED", "--add-modules", "jdk.incubator.vector")
     testLogging {

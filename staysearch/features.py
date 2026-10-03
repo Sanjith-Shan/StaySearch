@@ -161,6 +161,8 @@ def build() -> None:
                     "minimum_nights": _num(r["minimum_nights"]), "maximum_nights": _num(r["maximum_nights"]),
                     "host_tenure_days": ((snap_d - dt.date.fromisoformat(host_since)).days
                                          if host_since else np.nan),
+                    "days_since_last_review": ((snap_d - dt.date.fromisoformat(r["last_review"])).days
+                                               if r["last_review"] else np.nan),
                     "listing_age_days": ((snap_d - dt.date.fromisoformat(first_review)).days
                                          if first_review else 0.0),
                     "amenities": sorted({amen_idx[a] for a in _parse_amenities(r["amenities"]) if a in amen_idx}),
@@ -232,6 +234,7 @@ def build() -> None:
             "num": pa.array(list(num), pa.list_(pa.float32(), len(NUMERIC))),
             "missing": pa.array(list(miss), pa.list_(pa.float32(), len(MISSING_FLAGS))),
             "amenities": pa.array([x["amenities"] for x in recs], pa.list_(pa.int16())),
+            "days_since_last_review": pa.array([x["days_since_last_review"] for x in recs], pa.float64()),
             "open_bits": pa.array([x["open_bits"] for x in recs], pa.binary()),
         })
         pq.write_table(tbl, PREP / f"listings_s{rank + 1}.parquet", compression="zstd")

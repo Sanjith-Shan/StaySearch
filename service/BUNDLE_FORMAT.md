@@ -19,8 +19,9 @@ no header; their shapes come from `manifest.json`. Row order is the same in ever
   "n_clusters": 128,
   "n_places": 900,
   "q_feat_dim": 87,                 // width of the query tower's "qfeat" input
-  "listing_static_dim": 28,         // width of ranker_static.f32 rows
-  "ranker_feat_dim": 40,            // listing_static_dim + 12 cross features
+  "listing_static_dim": 30,         // width of ranker_static.f32 rows (the service reads it from here)
+  "ranker_feat_dim": 45,            // listing_static_dim + 15 cross features
+  "ranker_rank_k": 100,             // retrieval K the rankers were trained with (cross feature 14); default 100
   "models": {"query_tower": "query_tower.onnx", "ranker": "ranker.onnx", "ranker_gbdt": "ranker_gbdt.onnx"},
   "cities": ["seattle", "..."]
 }
@@ -71,7 +72,8 @@ feature 1 is then 0 and the area is the bbox area (`km_per_deg_lat = 111.32`, lo
 ## Ranker ONNX (`ranker.onnx` DNN, `ranker_gbdt.onnx` LightGBM)
 
 Input `x` float32 [B, ranker_feat_dim]; output `score` float32 [B] or [B, 1] (higher is better).
-Row = `ranker_static[i]` (listing_static_dim floats) followed by 12 cross features:
+Row = `ranker_static[i]` (listing_static_dim floats) followed by 15 cross features, so
+`ranker_feat_dim = listing_static_dim + 15` (the service refuses a bundle where it is not):
 
 | offset | feature |
 |---|---|
@@ -87,9 +89,19 @@ Row = `ranker_static[i]` (listing_static_dim floats) followed by 12 cross featur
 | 9 | `ln(1 + nights) / ln(31)` |
 | 10 | `guests / 16` |
 | 11 | history room-type mix at this listing's room type (0 without history) |
+| 12 | `ln(1 + gap_before) / ln(1 + 28)`: gap_before = consecutive open nights immediately before the check-in night, walking back from `checkin - 1`, capped at 28; the walk stops after night 0, and nights before night 0 or at or beyond the horizon are closed |
+| 13 | `ln(1 + gap_after) / ln(1 + 28)`: gap_after = consecutive open nights starting at the checkout night, capped at 28; nights at or beyond the horizon are closed |
+| 14 | `ln(1 + min(rank, ranker_rank_k)) / ln(1 + ranker_rank_k)`: rank = 0-based position in the retrieval top K by distance ascending (ties by row order) |
+
+Gaps (12, 13) use night offsets from `base_date` and read the availability as it currently stands
+(the bundle's `availability.bin` plus any updates applied so far). With a ranker, `/search`
+retrieves `k = ranker_rank_k` candidates by default so serving matches training (`k` stays
+configurable per request; without a ranker the default is 500).
 
 `golden/query_features.jsonl` and `golden/ranker_features.jsonl` hold requests with the exact
-feature vectors Python computes; the Kotlin tests assert agreement to 1e-5.
+feature vectors Python computes; the Kotlin tests assert agreement to 1e-5. Each ranker row also
+carries `"rank": int` (0-based, may exceed `ranker_rank_k`), which the test feeds to feature 14
+instead of recomputing it; its gaps come from `availability.bin` as loaded, with no updates applied.
 `golden/parity_queries.jsonl` holds `{"place_idx", "qfeat":[...], "qemb":[...]}` from PyTorch for the ONNX parity test (max abs diff < 1e-4).
 
 ## Queries and updates
