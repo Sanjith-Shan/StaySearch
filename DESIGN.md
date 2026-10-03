@@ -141,4 +141,128 @@ search date, in any loaded city. Features: whether any exist, the mean of those 
 embeddings (stop-gradient), the mean normalized log price, and the room-type mix. Most guests have
 no history; every metric is reported on the full set and on the with-history slice.
 
-<!-- Sections 3+ (system, index, ranking, experiments) are filled in as each milestone lands. -->
+## 3. Retrieval: the two towers
+
+**Listing tower (offline, the "daily batch").** Inputs: S2 cell embeddings at levels 10, 12 and 14
+(16 dims each), room type and property type embeddings, 27 standardized numeric fields (capacity,
+bedrooms, bathrooms, log price quote, min and max nights, availability fractions, review counts and
+scores, estimated occupancy, host tenure, listing age, superhost), three missing-value flags, and a
+200-amenity multi-hot. MLP 256-128-64. All engagement fields are read from the snapshot the split
+uses, so they are as of that date. `staysearch.towers.embed_listings` is the batch job; its output
+is what the service loads.
+
+**Query tower (online).** A 32-dim place embedding (each city and each neighbourhood is a place)
+plus 87 features: log area, city-or-neighbourhood flag, guests, log nights, lead-time bucket,
+check-in day of week, and the guest-history block (has history, mean normalized log price,
+room-type mix, mean of the history listings' embeddings with stop-gradient). MLP 128-128-64.
+Kept small on purpose, as in 2601.06873 section 4.5: it is the only model on the request path
+before the index.
+
+**Loss.** In-batch sampled softmax with the logQ correction of Yi et al. (subtract the log of each
+listing's share of positives in its city, since batches are drawn within a city), plus explicit
+hard negatives from the sampler under test, masked by the false-negative guard. Logits are a learned
+scale times the dot product, or times the negative squared L2 distance for the Euclidean variant.
+Ten epochs of up to 600,000 trips each; the epoch with the best validation recall@100 is kept.
+
+**Variants trained (exp2, exp3, exp8):** in-batch only, random, geo-hard, price-hard, model-mined,
+and the mix (one of each), all Euclidean; the mix with dot product; the mix without guest history;
+the mix with guests and nights zeroed in the query tower (the leakage check).
+
+## 4. The index: IVF as a filter, HNSW on the same documents
+
+2601.06873 chose IVF over HNSW because, with filters and about 10,000 real-time updates per
+second, HNSW's memory grew too large and updates were hard; IVF stores only centroids and a
+cluster id per listing, and the cluster id is applied as an ordinary filter in the search engine.
+StaySearch builds both strategies in one Apache Lucene 10 index over the same documents:
+
+- **IVF path.** FAISS k-means (128 clusters, swept 64 and 256) over the listing embeddings; each
+  document stores its cluster id as an `IntField`. A query takes the `nprobe` nearest centroids and
+  runs one Lucene `BooleanQuery` of filters: `cluster_id IN (...)`, a `LatLonPoint` box, capacity,
+  min and max nights, and the availability query (section 5). The vectors live outside Lucene in a
+  float array keyed by row; the service computes exact distances on the filtered candidates and
+  keeps the top K.
+- **HNSW path.** The same documents also carry a `KnnFloatVectorField` (Euclidean), queried with
+  `KnnFloatVectorQuery(field, q, k, filter)` using the same filter minus the cluster clause.
+  Lucene pre-filters inside graph traversal, so there is no post-filter recall loss to correct.
+- **Exact path.** All filtered documents, exact distance: the ground truth for recall vs exact.
+
+**Updates.** A calendar flip changes the in-memory availability store in place and is visible to
+the next query with no index work. For the index-placement experiment (exp4), every event also
+rewrites the listing's Lucene document with `IndexWriter.updateDocument`, which deletes and re-adds
+it; in HNSW mode the re-added document carries its vector, so the graph segment must index it and
+later merges must rebuild graphs. A `SearcherManager` refreshes every second. Update-to-visible lag
+is measured with sequence numbers captured at refresh. New listings get their tower embedding from
+the batch and a cluster id from the nearest centroid at ingest (the cold-start path).
+
+**The clustering finding (exp3).** The paper found dot-product clustering imbalanced (one or two
+clusters holding about 20% of listings) and Euclidean balanced, with far better recall at small
+nprobe (Table 2). StaySearch trains a dot-product and a Euclidean tower, clusters each with the
+matching metric, and reports the size distribution and recall@100 vs exact at nprobe 1 to 64. It
+also tries the inner-product-to-Euclidean transform of Bachrach et al. on the dot model, which the
+paper cites as not fixing the imbalance.
+
+## 5. Availability: an O(1) check that updates in place
+
+Per listing, a bitset of 448 nights from the bundle's base date (7 x 64 bits) and a run-length
+array, `run[d]` = consecutive open nights starting at night `d`, stored as bytes capped at 255 (a
+stored 255 means "keep checking at d + 255", so a check is at most two lookups over 448 nights). A
+stay `[a, b)` is open iff `run[a] >= b - a`. A flip at night `d` updates the bit and recomputes
+`run` only for nights at or before `d`, stopping as soon as a value is unchanged. One writer and
+many readers share it through a per-listing seqlock. Lucene sees it through a custom two-phase
+`AvailabilityQuery` that reads each document's row and asks the store, so availability never
+needs an index write. Flexible dates (plus or minus 3 days on each end, 49 windows) are 49 lookups
+into the same arrays, returned as a 49-bit mask. This is the compact structure of 2601.06873
+section 5.5.1, rebuilt at our scale.
+
+The **hard invariant**: every returned listing is open for every requested night in the store's
+current state (checked against the bitset night by night, independently of the run array), meets
+min and max nights, fits the guests, and lies inside the box. It is a JUnit test, a Kotest property
+test over random places, boxes, dates, guests and modes, and a CI replay over recorded queries;
+one violation fails the build.
+
+## 6. Ranking
+
+Rankers re-rank the two-tower's top K = 100 from the eligible set. Inputs are the listing's static
+features (the tower's numeric fields, missing flags, room type, amenity count) and 12 query-listing
+cross features: retrieval distance, distance to the area centre scaled by its size, log price per
+guest, nights beyond the minimum, guests over capacity, lead time, nights, guests, and four
+guest-history features (embedding affinity, price gap to the guest's usual, room-type match,
+has-history). The Python and Kotlin implementations of these are held together by golden files.
+
+The lineage follows Haldar et al. (KDD'19): LightGBM LambdaMART first, then a pairwise DNN
+(logistic loss of the reviewed stay against each other candidate), then the DNN with the history
+features. Rankers train on the rank_train split, select on validation, and report on test.
+**Training lists keep only queries where retrieval found the reviewed stay** (BUG_LOG #6).
+
+**Replay recall (exp7).** 2601.06873 section 5.2 scores retrieval by the recall of the first-stage
+ranker's top results. StaySearch runs its ranker over each test query's full eligible set, takes
+its top 100 as ground truth, and reports what fraction each retrieval method's top 100 recovers.
+
+## 7. Position bias (M5, simulated)
+
+There are no impressions in public data, so position bias can only be studied on simulated logs,
+and every such number is labelled SIMULATED. Real candidate lists are shown by a logging policy
+that mixes the trained ranker's score with popularity and noise; simulated guests examine position
+`p` with probability `p^-eta` and choose among examined listings in proportion to
+`exp(utility / tau)`. A DNN trained with `log(1 + position)` as a feature (dropped out at 15%, set
+to 0 at inference, as in Haldar et al. KDD'20) is compared with one trained without it, by Kendall
+tau and NDCG against the true utility, at three bias strengths.
+
+## 8. Extensions (M6)
+
+- **Diversity (M6a).** Greedy re-ranking of the ranker's top 10 after *Learning To Rank Diversely*:
+  each slot takes the candidate with the best ranker score minus lambda times its maximum
+  similarity (location and price) to listings already placed. The result is a curve of NDCG of the
+  reviewed stay against intra-list diversity, not a single winner.
+- **Flexible dates (M6b).** Eligible-set growth and latency of one 49-window search against 49
+  separate searches, in the service.
+- **Map-and-list demo (M6c).** A static page served by the Kotlin service: pick a city or drag the
+  map, set dates and guests, and see ranked results, per-stage latency, and the invariant status.
+
+## 9. What is not here, on purpose
+
+No LLM anywhere. No text search or BM25: the query is structured (place, dates, guests) and listing
+text is never matched at query time. No interleaving or IPS counterfactual learning to rank. No
+sharded or replicated serving tier and no broker: the update stream is an in-process replay from a
+file. No claim about bookings, conversion or revenue.
+

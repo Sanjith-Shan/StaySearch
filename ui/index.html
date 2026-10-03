@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StaySearch demo</title>
+  <meta name="description" content="Map-and-list demo of the StaySearch retrieval and ranking service.">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 2c-4 0-7 3-7 7 0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="currentColor"/></svg>
+      </span>
+      <div>
+        <h1>StaySearch</h1>
+        <p class="tag">Two-tower retrieval, Lucene IVF/HNSW, live availability, ONNX ranking</p>
+      </div>
+    </div>
+    <div class="status" id="status">connecting...</div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel">
+      <form id="form" class="card form" autocomplete="off">
+        <fieldset>
+          <legend>Where</legend>
+          <div class="row2">
+            <label>City
+              <select id="city"></select>
+            </label>
+            <label>Neighbourhood
+              <select id="nbhd"><option value="">Whole city</option></select>
+            </label>
+          </div>
+          <button type="button" id="areaBtn" class="ghost wide">Search this map area</button>
+        </fieldset>
+
+        <fieldset>
+          <legend>When and who</legend>
+          <div class="row2">
+            <label>Check-in <input type="date" id="checkin" required></label>
+            <label>Check-out <input type="date" id="checkout" required></label>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="flexible">
+            <span class="track"><span class="thumb"></span></span>
+            Flexible dates, &plusmn;3 days (49 windows)
+          </label>
+          <div class="row2">
+            <label>Guests <input type="number" id="guests" min="1" max="16" value="2"></label>
+            <label>Guest id
+              <span class="inline">
+                <input type="text" id="guestId" inputmode="numeric" placeholder="optional">
+                <button type="button" id="sampleBtn" class="ghost small" title="Fill in a guest with history and the test query they came from">Sample</button>
+              </span>
+            </label>
+          </div>
+          <p class="note" id="sampleNote" hidden></p>
+        </fieldset>
+
+        <details class="adv" open>
+          <summary>Retrieval and ranking</summary>
+          <div class="row3">
+            <label>Mode
+              <select id="mode"></select>
+            </label>
+            <label>Ranker
+              <select id="ranker"></select>
+            </label>
+            <label>nprobe <input type="number" id="nprobe" min="1" max="1024" value="16"></label>
+          </div>
+          <div class="row2">
+            <label>K (retrieved) <input type="number" id="k" min="1" max="100000" value="500"></label>
+            <label>T (shown) <input type="number" id="t" min="1" max="200" value="25"></label>
+          </div>
+        </details>
+
+        <button type="submit" id="searchBtn" class="primary wide">Search</button>
+        <p class="error" id="error" role="alert" hidden></p>
+      </form>
+
+      <section class="card summary" id="summary" hidden>
+        <div class="stats" id="stats"></div>
+        <div class="latency">
+          <div class="lat-head"><span>Server latency by stage</span><span id="latTotal"></span></div>
+          <div class="bar" id="latBar"></div>
+          <ul class="legend" id="latLegend"></ul>
+        </div>
+      </section>
+
+      <section class="results" aria-live="polite">
+        <ol id="list" class="list"></ol>
+        <p class="empty" id="empty" hidden>No listings match. Try other dates, fewer guests, flexible dates or a larger area.</p>
+      </section>
+    </aside>
+
+    <section class="mapwrap">
+      <div id="map" aria-label="Map of results"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    Reviewed stays, not bookings. Searches are reconstructed. Not affiliated with Airbnb or Inside Airbnb.
+    <span class="foot-src">Listing data: Inside Airbnb, CC BY 4.0. Map: &copy; OpenStreetMap contributors.</span>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="app.js"></script>
+</body>
+</html>

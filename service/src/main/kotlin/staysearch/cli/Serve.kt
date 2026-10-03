@@ -85,6 +85,10 @@ object Serve {
                 ))
             }
             get("/places") { call.respond(bundle.places) }
+            val meta = ServeInfo.meta(bundle, engine.models.rankerNames, engine.index.withVectors)
+            get("/meta") { call.respond(meta) }
+            val sampleGuests = ServeInfo.sampleGuests(bundle)
+            get("/sample-guests") { call.respond(sampleGuests) }
             get("/stats") { call.respond(engine.pipeline.stats.summary()) }
             get("/listing/{id}") {
                 val id = call.parameters["id"]?.toLongOrNull() ?: throw BadRequestException("id must be a number")
@@ -109,13 +113,22 @@ object Serve {
                     call.respond(HttpStatusCode.BadRequest, mapOf("error" to "bad request body: ${e.message}")); return@post
                 }
                 try {
-                    call.respond(engine.pipeline.search(req))
+                    val resp = engine.pipeline.search(req)
+                    // The hard invariant, re-checked night by night from the bitset against the store's
+                    // state just after the search (with --updates-rate a concurrent update can land in between).
+                    val violations = engine.invariants.check(req, resp)
+                    @Suppress("UNCHECKED_CAST")
+                    val body = Json.mapper.convertValue(resp, Map::class.java) as MutableMap<String, Any?>
+                    body["flexible"] = req.flexible
+                    body["invariant_ok"] = violations.isEmpty()
+                    body["invariant_violations"] = violations.take(10)
+                    call.respond(body)
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.BadRequest, mapOf("error" to e.message))
                 }
             }
             if (staticDir != null) staticFiles("/", staticDir) { default("index.html") }
-            else get("/") { call.respond(mapOf("service" to "staysearch", "endpoints" to listOf("/search", "/health", "/places", "/listing/{id}", "/stats"))) }
+            else get("/") { call.respond(mapOf("service" to "staysearch", "endpoints" to listOf("/search", "/health", "/meta", "/places", "/sample-guests", "/listing/{id}", "/stats"))) }
         }
     }
 }

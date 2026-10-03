@@ -54,6 +54,7 @@ class Candidates:
         self.K = K
         self.X, self.y, self.group, self.qpos, self.in_k, self.rows_list = [], [], [], [], [], []
         self.full = []  # (rows, dist) of the full eligible set, for replay recall
+        self.kept = []  # positions in es.idx of the lists kept
         for j in range(len(idx)):
             i = idx[j]
             rows = self.es.eligible(j)
@@ -61,15 +62,17 @@ class Candidates:
                 d = -(emb[rows] @ qe[j])
             else:
                 d = ((emb[rows] - qe[j]) ** 2).sum(1)
-            self.full.append((rows, d))
             top = np.argsort(d, kind="stable")[:K]
             cand, cd = rows[top], d[top]
             pos = self.es.pos_rows[j]
             hit = pos in cand
-            self.in_k.append(hit)
             if include_positive and not hit:
-                cand = np.append(cand[:-1] if len(cand) == K else cand, pos)
-                cd = np.append(cd[:-1] if len(cd) == K else cd, d[rows == pos][0])
+                # Training lists keep only queries whose positive retrieval actually found. Forcing a
+                # missed positive into the list makes it the farthest candidate, a leak (BUG_LOG #6).
+                continue
+            self.full.append((rows, d))
+            self.in_k.append(hit)
+            self.kept.append(j)
             p = q["place_idx"][i]
             cross = qf.cross_features(cd, s.lat[cand], s.lng[cand], s.price[cand], s.min_nights[cand],
                                       s.accommodates[cand], s.room_type[cand], emb[cand], P["lat"][p], P["lng"][p],
@@ -80,7 +83,7 @@ class Candidates:
             self.group.append(len(cand))
             self.rows_list.append(cand)
         self.static_dim = static.shape[1]
-        self.has_hist = qfeat[:, 17] > 0
+        self.has_hist = qfeat[self.kept, 17] > 0
         self.qfeat, self.emb, self.static, self.snap, self.qe = qfeat, emb, static, s, qe
         self.in_k = np.array(self.in_k)
 
@@ -180,7 +183,7 @@ def export_dnn(model: PairwiseDNN, d_in: int, path) -> None:
 def export_lgbm(booster: lgb.Booster, d_in: int, path) -> None:
     from onnxmltools import convert_lightgbm
     from onnxmltools.convert.common.data_types import FloatTensorType
-    onx = convert_lightgbm(booster, initial_types=[("x", FloatTensorType([None, d_in]))], target_opset=17,
+    onx = convert_lightgbm(booster, initial_types=[("x", FloatTensorType([None, d_in]))], target_opset=15,
                            zipmap=False)
     # Rename the regressor's output to the contract's name.
     for o in onx.graph.output:
