@@ -1,0 +1,31 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install numpy pyarrow duckdb s2sphere scikit-learn pytest
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pytest -q tests
+  service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: "21"}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install numpy onnx && pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Build, generate the fake bundle, run all tests (hard invariant, property tests, golden features, ONNX parity)
+        working-directory: service
+        run: STAYSEARCH_PYTHON=$(which python) ./gradlew build --no-daemon
+      - name: Invariant replay and ONNX parity on the fake bundle
+        working-directory: service
+        run: |
+          ./gradlew installDist --no-daemon
+          B=build/install/staysearch-service/bin/staysearch-service
+          $B replay-invariant --bundle build/fake-bundle --n 400 --modes ivf,hnsw,exact --out build/ci_invariant.jsonl
+          $B parity --bundle build/fake-bundle --out build/ci_parity.jsonl

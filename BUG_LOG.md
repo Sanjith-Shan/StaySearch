@@ -1,0 +1,11 @@
+# Bug log
+
+Each bug, how it showed up, the tool that found it, and the fix. Newest last.
+
+| # | Milestone | Bug | Found by | Fix |
+|---|---|---|---|---|
+| 1 | M0 | `staysearch/data/` (the download package) shadowed `staysearch/data.py`, so `from staysearch.data import CITY_LIST` failed | Python `ImportError` on the first baseline run | Renamed the package to `staysearch/ingest/` |
+| 2 | M0 | The first label builder kept every review as a Python tuple (10.9M) and every kept stay as a dict; on a machine already under memory pressure this was several GB | Sizing query in DuckDB before the first full run (5.4M reviews since 2023-09) | Rewrote it vectorized in NumPy; guest history became an index range into one (reviewer, date)-sorted review array instead of a per-row list. Full build: 45 s |
+| 3 | M0 | Quarterly snapshots are not uniform: Seattle 2025-12-28 and 2026-03-29 have no `price` values at all, and S3 (March 2026) holds about 30% fewer listings than its neighbours across all ten cities | DuckDB `count(price)` per snapshot during ingest checks | Not a code bug, a data fact. Price is carried forward from the latest earlier snapshot with a quote (point in time), the missing share is reported per city in `results/m0_data.jsonl`, and the README states both |
+| 4 | M1 | Expected rank under ties was `greater + (ties + 1) / 2`, half a place too good (the mean of positions `greater+1 .. greater+ties+1` is `greater + 1 + ties/2`). Recall and NDCG were already correct; only the reported mean rank was off | pytest `test_ties_are_expected_values` | Corrected the formula before any rank was reported |
+| 5 | M3 | The Kotest property test for the hard invariant drew a NaN box size: `Arb.double(min, max)` includes non-finite edge cases by default, and the service (correctly) rejected the NaN box with `bbox min must be <= max` | Kotest property test, shrunk to the NaN case on attempt 66 | Generator restricted to finite values (`includeNaNs = false`); the service's rejection of a non-finite box stays as the 400 path |

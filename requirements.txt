@@ -1,0 +1,14 @@
+# Python 3.12. Versions are the ones measured on the build machine.
+torch>=2.8
+numpy>=2.0
+duckdb>=1.5
+pyarrow>=20
+faiss-cpu>=1.15
+lightgbm>=4.7
+scikit-learn>=1.5
+onnx>=1.20
+onnxruntime>=1.22
+onnxmltools>=1.16
+skl2onnx>=1.20
+s2sphere>=0.2.5
+pytest>=8

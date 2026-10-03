@@ -1,0 +1,14 @@
+data/
+artifacts/
+logs/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+service/build/
+service/.gradle/
+service/.kotlin/
+.minipc-busy
+.minipc-runs/
+.DS_Store
+*.sync-conflict-*
