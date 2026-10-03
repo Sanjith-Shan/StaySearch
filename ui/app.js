@@ -356,6 +356,7 @@
     meta.rankers.forEach(function (r) { rk.appendChild(new Option(r === "none" ? "none (distance)" : r.toUpperCase(), r)); });
     rk.value = meta.defaults.ranker;
     $("nprobe").value = meta.defaults.nprobe;
+    if (meta.defaults.k) $("k").value = meta.defaults.k;
     $("nprobe").max = meta.n_clusters;
     syncNprobe();
   }

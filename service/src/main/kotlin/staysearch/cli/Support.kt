@@ -77,8 +77,17 @@ fun provenance(bundle: Bundle, repeat: Int, loadStart: Map<String, Any?>): Map<S
  * worker pool at that time regardless of how earlier arrivals are doing, and its latency is measured
  * from the due time (so queueing behind slow requests counts; no coordinated omission).
  */
+/**
+ * How long before each due time the generator stops parking and spins. Windows' default timer tick
+ * is about 15.6 ms, so a park can overshoot by that much there; elsewhere 2 ms is plenty. The cost is
+ * that the generator thread spins on one core for that window before each arrival.
+ */
+private val SPIN_NS = if (System.getProperty("os.name").startsWith("Windows")) 16_000_000L else 2_000_000L
+
 class OpenLoop(private val rate: Double, private val threads: Int) {
     val latencyUs = ConcurrentHistogram(3)
+    /** How late the generator itself dispatched each recorded arrival (should be near 0). */
+    val dispatchLagUs = ConcurrentHistogram(3)
     val errors = AtomicLong()
     val completed = AtomicLong()
     var issued = 0L
@@ -101,11 +110,16 @@ class OpenLoop(private val rate: Double, private val threads: Int) {
         while (true) {
             val due = start + (i * interval).toLong()
             if (due >= end) break
+            // Park until SPIN_NS before the due time, then spin. A plain parkNanos(wait)
+            // oversleeps by up to one OS timer tick (about 15.6 ms on Windows by default), and that
+            // lateness would be charged to the service as latency (BUG_LOG #9).
             while (true) {
                 val wait = due - System.nanoTime()
                 if (wait <= 0) break
-                LockSupport.parkNanos(wait)
+                if (wait > SPIN_NS) LockSupport.parkNanos(wait - SPIN_NS) else Thread.onSpinWait()
             }
+            val lag = System.nanoTime() - due
+            if (due >= warmEnd) dispatchLagUs.recordValue((lag / 1000).coerceAtLeast(0))
             val record = due >= warmEnd
             if (record && !warmed) {
                 warmed = true; onWarmupEnd()

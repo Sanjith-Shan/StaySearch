@@ -37,6 +37,15 @@ Exact scoring over each query's eligible set; 95% bootstrap intervals; same 20,0
 | geo_distance | exp1 | 11.0% [10.6%, 11.4%] | 36.9% [36.2%, 37.6%] | 58.2% [57.5%, 58.9%] | 5.5% [5.2%, 5.7%] | 20000 | 1002.0 | results/m1_baselines.jsonl |
 | popularity_ltm | exp1 | 18.2% [17.7%, 18.8%] | 47.2% [46.5%, 47.9%] | 69.5% [68.8%, 70.1%] | 10.1% [9.7%, 10.4%] | 20000 | 1002.0 | results/m1_baselines.jsonl |
 | linear_query_independent | exp1 | 18.2% [17.7%, 18.7%] | 47.1% [46.4%, 47.7%] | 69.7% [69.0%, 70.3%] | 10.0% [9.6%, 10.3%] | 20000 | 1002.0 | results/m1_baselines.jsonl |
+| mix_l2 | exp1 | 21.2% [20.6%, 21.8%] | 51.1% [50.4%, 51.8%] | 73.0% [72.3%, 73.6%] | 11.8% [11.4%, 12.1%] | 20000 | 1002.0 | results/m2_retrieval.jsonl |
+| none_l2 | exp1 | 20.9% [20.4%, 21.5%] | 50.9% [50.2%, 51.6%] | 72.7% [72.1%, 73.3%] | 11.7% [11.3%, 12.0%] | 20000 | 1002.0 | results/m2_retrieval.jsonl |
+| random_l2 | exp1 | 20.7% [20.2%, 21.3%] | 50.6% [49.9%, 51.3%] | 72.8% [72.1%, 73.4%] | 11.4% [11.1%, 11.7%] | 20000 | 1002.0 | results/m2_retrieval.jsonl |
+| geo_l2 | exp1 | 21.1% [20.6%, 21.7%] | 51.0% [50.2%, 51.7%] | 73.1% [72.4%, 73.7%] | 11.8% [11.4%, 12.1%] | 20000 | 1002.0 | results/m2_retrieval.jsonl |
+| price_l2 | exp1 | 21.1% [20.5%, 21.7%] | 50.8% [50.1%, 51.5%] | 73.1% [72.4%, 73.7%] | 11.7% [11.3%, 12.0%] | 20000 | 1002.0 | results/m2_retrieval.jsonl |
+| mined_l2 | exp1 | 21.0% [20.4%, 21.5%] | 50.5% [49.8%, 51.2%] | 72.7% [72.1%, 73.3%] | 11.6% [11.2%, 11.9%] | 20000 | 1002.0 | results/m2_retrieval.jsonl |
+| mix_l2_nohist | exp1 | 19.7% [19.1%, 20.2%] | 48.8% [48.1%, 49.6%] | 71.2% [70.5%, 71.8%] | 10.7% [10.3%, 11.0%] | 20000 | 1002.0 | results/m2_retrieval.jsonl |
+| mix_dot | exp1 | 20.7% [20.2%, 21.3%] | 50.7% [50.0%, 51.4%] | 72.9% [72.2%, 73.5%] | 11.3% [11.0%, 11.7%] | 20000 | 1002.0 | results/m2_retrieval.jsonl |
+| mix_l2_noleak | exp8 | 19.9% [19.3%, 20.4%] | 49.8% [49.1%, 50.5%] | 71.8% [71.1%, 72.4%] | 10.9% [10.6%, 11.3%] | 20000 | 1002.0 | results/m2_retrieval.jsonl |
 
 
 **Slice: with_history**
@@ -47,27 +56,299 @@ Exact scoring over each query's eligible set; 95% bootstrap intervals; same 20,0
 | geo_distance | exp1 | 12.0% [11.2%, 12.8%] | 38.7% [37.4%, 39.9%] | 59.0% [57.8%, 60.3%] | 5.9% [5.5%, 6.4%] | 5920 | 973.5 | results/m1_baselines.jsonl |
 | popularity_ltm | exp1 | 18.6% [17.7%, 19.6%] | 47.8% [46.5%, 49.1%] | 70.4% [69.3%, 71.5%] | 10.2% [9.6%, 10.8%] | 5920 | 973.5 | results/m1_baselines.jsonl |
 | linear_query_independent | exp1 | 18.0% [17.1%, 19.0%] | 47.7% [46.5%, 48.9%] | 70.2% [69.0%, 71.5%] | 10.0% [9.4%, 10.6%] | 5920 | 973.5 | results/m1_baselines.jsonl |
+| mix_l2 | exp1 | 24.6% [23.5%, 25.7%] | 55.8% [54.5%, 57.1%] | 77.1% [76.0%, 78.1%] | 13.8% [13.1%, 14.5%] | 5920 | 973.5 | results/m2_retrieval.jsonl |
+| none_l2 | exp1 | 24.1% [23.0%, 25.2%] | 55.4% [54.1%, 56.7%] | 77.0% [75.9%, 78.0%] | 13.4% [12.8%, 14.1%] | 5920 | 973.5 | results/m2_retrieval.jsonl |
+| random_l2 | exp1 | 23.3% [22.2%, 24.4%] | 54.6% [53.2%, 55.9%] | 76.8% [75.7%, 77.8%] | 12.9% [12.2%, 13.6%] | 5920 | 973.5 | results/m2_retrieval.jsonl |
+| geo_l2 | exp1 | 24.1% [23.0%, 25.3%] | 55.6% [54.2%, 56.9%] | 77.2% [76.1%, 78.3%] | 13.4% [12.8%, 14.1%] | 5920 | 973.5 | results/m2_retrieval.jsonl |
+| price_l2 | exp1 | 24.0% [22.9%, 25.1%] | 54.7% [53.4%, 56.0%] | 76.8% [75.6%, 77.8%] | 13.2% [12.6%, 13.9%] | 5920 | 973.5 | results/m2_retrieval.jsonl |
+| mined_l2 | exp1 | 23.7% [22.7%, 24.8%] | 54.4% [53.1%, 55.8%] | 76.4% [75.3%, 77.4%] | 13.1% [12.4%, 13.7%] | 5920 | 973.5 | results/m2_retrieval.jsonl |
+| mix_l2_nohist | exp1 | 20.1% [19.0%, 21.1%] | 49.1% [47.8%, 50.4%] | 71.6% [70.4%, 72.8%] | 10.9% [10.3%, 11.5%] | 5920 | 973.5 | results/m2_retrieval.jsonl |
+| mix_dot | exp1 | 23.4% [22.4%, 24.4%] | 54.4% [53.1%, 55.7%] | 77.1% [76.0%, 78.2%] | 12.8% [12.2%, 13.4%] | 5920 | 973.5 | results/m2_retrieval.jsonl |
+| mix_l2_noleak | exp8 | 23.3% [22.3%, 24.5%] | 55.3% [54.0%, 56.6%] | 76.8% [75.7%, 77.8%] | 12.8% [12.1%, 13.5%] | 5920 | 973.5 | results/m2_retrieval.jsonl |
 
 
 **Recall@100 per city (test)**
 
-| city | geo_distance | linear_query_independent | popularity_ltm | random |
-|---|---|---|---|---|
-| austin | 32.9% | 41.9% | 42.4% | 28.9% |
-| boston | 54.7% | 62.8% | 62.9% | 53.8% |
-| chicago | 42.6% | 54.9% | 54.6% | 44.4% |
-| london | 11.1% | 18.3% | 20.2% | 6.3% |
-| los-angeles | 36.8% | 43.5% | 44.3% | 34.0% |
-| new-york-city | 45.3% | 62.2% | 60.4% | 43.1% |
-| paris | 11.5% | 21.4% | 22.6% | 7.8% |
-| san-diego | 37.4% | 42.4% | 42.3% | 34.4% |
-| san-francisco | 46.0% | 66.1% | 65.6% | 42.8% |
-| seattle | 50.9% | 57.1% | 56.6% | 48.8% |
+| city | geo_distance | geo_l2 | linear_query_independent | mined_l2 | mix_dot | mix_l2 | mix_l2_nohist | mix_l2_noleak | none_l2 | popularity_ltm | price_l2 | random | random_l2 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| austin | 32.9% | 45.8% | 41.9% | 45.0% | 44.3% | 45.2% | 44.8% | 44.0% | 45.4% | 42.4% | 44.4% | 28.9% | 43.7% |
+| boston | 54.7% | 65.0% | 62.8% | 65.6% | 65.1% | 64.3% | 61.8% | 63.3% | 64.3% | 62.9% | 64.5% | 53.8% | 64.2% |
+| chicago | 42.6% | 56.5% | 54.9% | 55.5% | 55.6% | 56.0% | 54.1% | 56.0% | 55.5% | 54.6% | 56.4% | 44.4% | 56.2% |
+| london | 11.1% | 28.2% | 18.3% | 26.9% | 27.1% | 28.1% | 25.4% | 25.7% | 27.8% | 20.2% | 27.1% | 6.3% | 27.9% |
+| los-angeles | 36.8% | 48.3% | 43.5% | 47.4% | 47.1% | 48.9% | 46.0% | 47.4% | 48.9% | 44.3% | 48.4% | 34.0% | 48.6% |
+| new-york-city | 45.3% | 62.1% | 62.2% | 63.3% | 62.4% | 63.1% | 61.0% | 61.5% | 62.9% | 60.4% | 62.4% | 43.1% | 63.0% |
+| paris | 11.5% | 30.4% | 21.4% | 29.8% | 30.5% | 30.9% | 28.9% | 27.9% | 31.0% | 22.6% | 30.8% | 7.8% | 30.0% |
+| san-diego | 37.4% | 48.2% | 42.4% | 48.1% | 49.4% | 48.0% | 46.2% | 47.0% | 47.5% | 42.3% | 48.0% | 34.4% | 48.7% |
+| san-francisco | 46.0% | 68.0% | 66.1% | 65.6% | 67.3% | 67.3% | 65.0% | 67.7% | 68.0% | 65.6% | 68.8% | 42.8% | 66.8% |
+| seattle | 50.9% | 57.2% | 57.1% | 57.7% | 58.1% | 59.0% | 55.1% | 57.6% | 57.9% | 56.6% | 57.8% | 48.8% | 57.1% |
 
 
 ## M2 training runs (`results/m2_training*.jsonl`)
 
 | name | sampler | similarity | history | drop guests/nights | best val recall@100 | file |
 |---|---|---|---|---|---|---|
+| mix_l2 | mix | l2 | True | False | 48.9% | results/m2_training.jsonl |
+| mined_l2 | mined | l2 | True | False | 48.5% | results/m2_training.jsonl |
+| mix_l2_nohist | mix | l2 | False | False | 47.4% | results/m2_training.jsonl |
+| mix_l2_noleak | mix | l2 | True | True | 48.2% | results/m2_training.jsonl |
 | none_l2 | none | l2 | True | False | 49.3% | results/m2_training.minipc.jsonl |
+| random_l2 | random | l2 | True | False | 49.1% | results/m2_training.minipc.jsonl |
+| geo_l2 | geo | l2 | True | False | 50.0% | results/m2_training.minipc.jsonl |
+| price_l2 | price | l2 | True | False | 49.5% | results/m2_training.minipc.jsonl |
+| mix_dot | mix | dot | True | False | 48.9% | results/m2_training.minipc.jsonl |
+
+
+## exp3: clustering and IVF/HNSW recall vs exact (`results/m2_ann.jsonl`)
+
+| model | similarity | clusters | largest cluster share | top-2 share | Gini | empty |
+|---|---|---|---|---|---|---|
+| mix_l2 | l2 | 64 | 2.5% | 5.0% | 0.208 | 0 |
+| mix_l2 | l2 | 128 | 3.8% | 6.5% | 0.223 | 0 |
+| mix_l2 | l2 | 256 | 0.8% | 1.6% | 0.201 | 0 |
+| mix_dot | dot | 64 | 2.6% | 5.2% | 0.203 | 0 |
+| mix_dot | dot | 128 | 3.9% | 6.0% | 0.230 | 0 |
+| mix_dot | dot | 256 | 0.9% | 1.8% | 0.216 | 0 |
+| mix_dot | dot_bachrach_l2 | 64 | 2.8% | 5.4% | 0.227 | 0 |
+| mix_dot | dot_bachrach_l2 | 128 | 4.1% | 6.2% | 0.227 | 0 |
+| mix_dot | dot_bachrach_l2 | 256 | 0.9% | 1.7% | 0.199 | 0 |
+
+
+**IVF, 128 clusters: recall@100 vs exact** (paper column: 2601.06873 Table 2)
+
+| similarity | nprobe | unfiltered | filtered (eligible set) | share of eligible scanned | paper |
+|---|---|---|---|---|---|
+| l2 | 1 | 27.6% | 22.4% | 15.7% |  |
+| l2 | 2 | 41.3% | 33.9% | 24.0% | 71% |
+| l2 | 4 | 57.7% | 48.1% | 34.0% | 75% |
+| l2 | 8 | 71.7% | 63.5% | 45.8% |  |
+| l2 | 16 | 84.1% | 77.4% | 59.1% | 98% |
+| l2 | 32 | 93.8% | 90.6% | 75.4% | 100% |
+| l2 | 64 | 99.8% | 99.4% | 94.7% |  |
+| dot | 1 | 22.9% | 19.3% | 15.3% |  |
+| dot | 2 | 33.7% | 28.4% | 22.4% | 43% |
+| dot | 4 | 47.8% | 40.2% | 31.4% | 47% |
+| dot | 8 | 61.7% | 53.4% | 42.5% |  |
+| dot | 16 | 75.0% | 69.2% | 57.3% | 66% |
+| dot | 32 | 87.3% | 85.6% | 75.6% | 84% |
+| dot | 64 | 97.3% | 97.9% | 94.8% |  |
+| dot_bachrach_l2 | 1 | 5.1% | 3.9% | 3.2% |  |
+| dot_bachrach_l2 | 2 | 9.2% | 6.5% | 5.0% | 43% |
+| dot_bachrach_l2 | 4 | 18.9% | 13.0% | 9.5% | 47% |
+| dot_bachrach_l2 | 8 | 34.1% | 26.0% | 19.4% |  |
+| dot_bachrach_l2 | 16 | 55.6% | 46.7% | 36.8% | 66% |
+| dot_bachrach_l2 | 32 | 77.3% | 70.8% | 60.8% | 84% |
+| dot_bachrach_l2 | 64 | 94.5% | 94.4% | 89.5% |  |
+
+
+**FAISS HNSW (M=32): recall@100 vs exact**
+
+| similarity | efSearch | unfiltered | filtered | us/query unfiltered | us/query filtered | bytes/vector |
+|---|---|---|---|---|---|---|
+| l2 | 16 | 37.2% | 18.0% | 13 | 256 | 528 |
+| l2 | 32 | 51.9% | 25.8% | 19 | 246 | 528 |
+| l2 | 64 | 64.7% | 35.4% | 37 | 291 | 528 |
+| l2 | 128 | 75.2% | 47.1% | 53 | 338 | 528 |
+| l2 | 256 | 84.6% | 59.3% | 87 | 520 | 528 |
+| l2 | 512 | 92.0% | 71.7% | 225 | 1062 | 528 |
+| dot | 16 | 27.7% | 8.8% | 9 | 187 | 528 |
+| dot | 32 | 33.4% | 12.0% | 13 | 203 | 528 |
+| dot | 64 | 38.1% | 14.6% | 18 | 217 | 528 |
+| dot | 128 | 40.8% | 16.9% | 29 | 264 | 528 |
+| dot | 256 | 43.6% | 19.4% | 58 | 335 | 528 |
+| dot | 512 | 45.2% | 21.5% | 134 | 580 | 528 |
+
+
+- FAISS memory per vector (l2, 212,828 x 64): IndexIVFFlat 264 B, IndexHNSWFlat 528 B (raw vector 256 B). remove_ids: IVF supported (removed 100); HNSW not supported: Error in virtual size_t faiss::Index::remove_ids(const IDSelector &) at /Users/runner/work/faiss/faiss/faiss/Index.cpp:57: remove_ids not implemented for this t
+- FAISS memory per vector (dot, 212,828 x 64): IndexIVFFlat 264 B, IndexHNSWFlat 528 B (raw vector 256 B). remove_ids: IVF supported (removed 100); HNSW not supported: Error in virtual size_t faiss::Index::remove_ids(const IDSelector &) at /Users/runner/work/faiss/faiss/faiss/Index.cpp:57: remove_ids not implemented for this t
+
+## exp6: ranking over the top K (test split) (`results/m4_ranking.jsonl`)
+
+NDCG@10 and MRR of the reviewed stay; 0 when retrieval missed it (the positive_in_topK slice conditions on a hit).
+
+**Slice: all**
+
+| model | NDCG@10 | MRR | queries | positive in top K |
+|---|---|---|---|---|
+| retrieval_order | 11.7% [11.2%, 12.3%] | 10.1% [9.6%, 10.5%] | 10000 | 50.0% |
+| popularity_ltm | 10.3% [9.9%, 10.9%] | 9.0% [8.6%, 9.4%] | 10000 | 50.0% |
+| price_ascending | 6.9% [6.5%, 7.3%] | 6.0% [5.7%, 6.3%] | 10000 | 50.0% |
+| review_score | 5.2% [4.9%, 5.5%] | 4.8% [4.6%, 5.0%] | 10000 | 50.0% |
+| random | 5.2% [4.8%, 5.5%] | 4.8% [4.5%, 5.1%] | 10000 | 50.0% |
+| lambdamart_nohist | 12.5% [11.9%, 13.0%] | 10.7% [10.2%, 11.2%] | 10000 | 50.0% |
+| dnn_nohist | 12.6% [12.1%, 13.2%] | 10.8% [10.3%, 11.3%] | 10000 | 50.0% |
+| lambdamart_hist | 13.2% [12.6%, 13.7%] | 11.2% [10.7%, 11.7%] | 10000 | 50.0% |
+| dnn_hist | 12.9% [12.3%, 13.4%] | 10.9% [10.5%, 11.4%] | 10000 | 50.0% |
+
+
+**Slice: with_history**
+
+| model | NDCG@10 | MRR | queries | positive in top K |
+|---|---|---|---|---|
+| retrieval_order | 13.4% [12.4%, 14.5%] | 11.5% [10.6%, 12.4%] | 2763 | 55.3% |
+| popularity_ltm | 10.4% [9.5%, 11.3%] | 9.2% [8.4%, 10.1%] | 2763 | 55.3% |
+| price_ascending | 7.9% [7.2%, 8.7%] | 6.8% [6.2%, 7.4%] | 2763 | 55.3% |
+| review_score | 6.1% [5.5%, 6.7%] | 5.6% [5.1%, 6.1%] | 2763 | 55.3% |
+| random | 5.8% [5.1%, 6.5%] | 5.3% [4.8%, 5.9%] | 2763 | 55.3% |
+| lambdamart_nohist | 14.0% [13.0%, 15.1%] | 12.1% [11.1%, 12.9%] | 2763 | 55.3% |
+| dnn_nohist | 14.2% [13.2%, 15.3%] | 12.2% [11.3%, 13.2%] | 2763 | 55.3% |
+| lambdamart_hist | 15.5% [14.5%, 16.6%] | 13.2% [12.2%, 14.1%] | 2763 | 55.3% |
+| dnn_hist | 14.9% [13.8%, 16.0%] | 12.6% [11.7%, 13.6%] | 2763 | 55.3% |
+
+
+**Slice: positive_in_topK**
+
+| model | NDCG@10 | MRR | queries | positive in top K |
+|---|---|---|---|---|
+| retrieval_order | 23.5% [22.6%, 24.4%] | 20.1% [19.4%, 21.0%] | 5001 | 100.0% |
+| popularity_ltm | 20.7% [19.8%, 21.5%] | 18.0% [17.2%, 18.8%] | 5001 | 100.0% |
+| price_ascending | 13.8% [13.0%, 14.5%] | 12.0% [11.4%, 12.6%] | 5001 | 100.0% |
+| review_score | 10.3% [9.8%, 10.9%] | 9.6% [9.1%, 10.0%] | 5001 | 100.0% |
+| random | 10.3% [9.7%, 10.9%] | 9.5% [9.0%, 10.1%] | 5001 | 100.0% |
+| lambdamart_nohist | 25.0% [24.1%, 25.9%] | 21.4% [20.6%, 22.3%] | 5001 | 100.0% |
+| dnn_nohist | 25.2% [24.4%, 26.2%] | 21.6% [20.8%, 22.5%] | 5001 | 100.0% |
+| lambdamart_hist | 26.4% [25.4%, 27.4%] | 22.4% [21.6%, 23.3%] | 5001 | 100.0% |
+| dnn_hist | 25.7% [24.8%, 26.7%] | 21.9% [21.0%, 22.8%] | 5001 | 100.0% |
+
+
+## exp7: replay recall@100 (`results/m4_replay_recall.jsonl`)
+
+Recall@100 of each retrieval method against the ranker's top 100 over the full eligible set (2601.06873 section 5.2). Not like for like with the paper's Table 1.
+
+| ground-truth ranker | retrieval | replay recall@100 | 95% CI | queries |
+|---|---|---|---|---|
+| lambdamart_hist | two_tower | 56.1% | [55.5%, 56.7%] | 10000 |
+| lambdamart_hist | geo_distance | 35.9% | [35.1%, 36.7%] | 10000 |
+| lambdamart_hist | linear_query_independent | 54.7% | [54.1%, 55.4%] | 10000 |
+| lambdamart_hist | popularity_ltm | 52.2% | [51.5%, 52.9%] | 10000 |
+| dnn_hist | two_tower | 62.6% | [62.1%, 63.1%] | 10000 |
+| dnn_hist | geo_distance | 36.9% | [36.1%, 37.6%] | 10000 |
+| dnn_hist | linear_query_independent | 59.7% | [59.1%, 60.3%] | 10000 |
+| dnn_hist | popularity_ltm | 57.1% | [56.5%, 57.7%] | 10000 |
+
+
+## M3: hard invariant replay (`results/m3_invariant.jsonl`)
+
+Machine: Apple M3 Pro, load 8.19677734375.
+
+| check | queries | searches | results_checked | violations | elapsed_s | repeat | bundle_as_of | bundle_dir | bundle_synthetic | n_listings | lucene_version |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| replay_invariant | 10000 | 31429 | 763404 | 0 | 47.95 | 1 | 2026-03-16 | /Users/sanjithshanmugavel/Documents/StaySearch/service/../artifacts/bundle | False | 212828 | 10.5.1 |
+
+
+## M3: ONNX parity (`results/m3_parity.jsonl`)
+
+Machine: Apple M3 Pro, load 8.74853515625.
+
+| check | queries | max_abs_diff | mean_abs_diff | tolerance | pass | onnxruntime | repeat | bundle_as_of | bundle_dir | bundle_synthetic | n_listings | lucene_version |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| onnx_parity | 10000 | 1.144e-05 | 3.916e-07 | 0.0001 | True | 1.30.0 | 1 | 2026-03-16 | /Users/sanjithshanmugavel/Documents/StaySearch/service/../artifacts/bundle | False | 212828 | 10.5.1 |
+
+
+## exp5: availability check (JMH) (`results/m3_exp5.jsonl`)
+
+Machine: None, load -1.0.
+
+| experiment | benchmark | method | windows | ns_per_op | ns_per_op_error_99_9 | unit | samples | forks | warmup_iterations | measurement_iterations | max_nights | calendars | jmh_version | repeat | bundle_as_of | bundle_synthetic |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| exp5_availability | perNightScanFlexible49 | per_night_scan | 49 | 153.2 | 7.15 | ns/op | 20 | 2 | 5 | 10 | 7 | bundle | 1.37 | 1 | 2026-03-16 | False |
+| exp5_availability | perNightScanFlexible49 | per_night_scan | 49 | 195.6 | 7.287 | ns/op | 20 | 2 | 5 | 10 | 14 | bundle | 1.37 | 1 | 2026-03-16 | False |
+| exp5_availability | perNightScanFlexible49 | per_night_scan | 49 | 248.6 | 12.24 | ns/op | 20 | 2 | 5 | 10 | 28 | bundle | 1.37 | 1 | 2026-03-16 | False |
+| exp5_availability | perNightScanSingle | per_night_scan | 1 | 10.47 | 0.135 | ns/op | 20 | 2 | 5 | 10 | 7 | bundle | 1.37 | 1 | 2026-03-16 | False |
+| exp5_availability | perNightScanSingle | per_night_scan | 1 | 11.6 | 0.5123 | ns/op | 20 | 2 | 5 | 10 | 14 | bundle | 1.37 | 1 | 2026-03-16 | False |
+| exp5_availability | perNightScanSingle | per_night_scan | 1 | 12.81 | 0.156 | ns/op | 20 | 2 | 5 | 10 | 28 | bundle | 1.37 | 1 | 2026-03-16 | False |
+| exp5_availability | runLengthFlexible49 | run_length | 49 | 105.2 | 5.465 | ns/op | 20 | 2 | 5 | 10 | 7 | bundle | 1.37 | 1 | 2026-03-16 | False |
+| exp5_availability | runLengthFlexible49 | run_length | 49 | 104.7 | 5.484 | ns/op | 20 | 2 | 5 | 10 | 14 | bundle | 1.37 | 1 | 2026-03-16 | False |
+| exp5_availability | runLengthFlexible49 | run_length | 49 | 97.29 | 4.997 | ns/op | 20 | 2 | 5 | 10 | 28 | bundle | 1.37 | 1 | 2026-03-16 | False |
+| exp5_availability | runLengthSingle | run_length | 1 | 11.4 | 0.2786 | ns/op | 20 | 2 | 5 | 10 | 7 | bundle | 1.37 | 1 | 2026-03-16 | False |
+| exp5_availability | runLengthSingle | run_length | 1 | 11.39 | 0.1218 | ns/op | 20 | 2 | 5 | 10 | 14 | bundle | 1.37 | 1 | 2026-03-16 | False |
+| exp5_availability | runLengthSingle | run_length | 1 | 11.24 | 0.7949 | ns/op | 20 | 2 | 5 | 10 | 28 | bundle | 1.37 | 1 | 2026-03-16 | False |
+
+
+## exp9: end-to-end latency (`results/m3_latency.jsonl`)
+
+Machine: None, load -1.0.
+
+| experiment | arrival_rate_qps | duration_s | warmup_s | with_updates | update_rate | replay | mode | ranker | k | t | nprobe | generator | issued | completed | errors | last_error | repeat | bundle_as_of | bundle_dir | bundle_synthetic | n_listings | lucene_version |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| exp9_latency | 25 | 30 | 15 | False | 0 | None | ivf | dnn | 100 | 25 | 16 | in-process, same JVM, 8 worker threads | 750 | 750 | 0 | None | 1 | 2026-03-16 | C:\Mac\Documents\StaySearch\service\..\artifacts\bundle | False | 212828 | 10.5.1 |
+| exp9_latency | 50 | 30 | 15 | False | 0 | None | ivf | dnn | 100 | 25 | 16 | in-process, same JVM, 8 worker threads | 1500 | 1500 | 0 | None | 1 | 2026-03-16 | C:\Mac\Documents\StaySearch\service\..\artifacts\bundle | False | 212828 | 10.5.1 |
+
+
+## exp4: IVF vs HNSW in Lucene under the update stream (`results/m4_exp4.jsonl`)
+
+Machine: None, load -1.0.
+
+| experiment | mode | rate_target | duration_s | elapsed_s | index_writes_per_s | jvm_heap_used_bytes | rss_bytes | index_bytes | heap_after_build_bytes | rss_after_build_bytes | index_bytes_after_build | index_build_ms | availability_store_bytes | recall_at_100_vs_exact | recall_queries | repeat | bundle_as_of | bundle_dir | bundle_synthetic | n_listings | lucene_version |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| exp4 | ivf | 0 | 60 | 59.96 | 0 | 453688240 | None | 11210245 | 452380464 | None | 11210245 | 2130 | 136616440 | 0.7734 | 240 | 1 | 2026-03-16 | C:\Mac\Documents\StaySearch\service\..\artifacts\bundle | False | 212828 | 10.5.1 |
+| exp4 | ivf | 100 | 60 | 59.95 | 0 | 453833240 | None | 11210245 | 452706400 | None | 11210245 | 2766 | 136616440 | 0.7734 | 240 | 1 | 2026-03-16 | C:\Mac\Documents\StaySearch\service\..\artifacts\bundle | False | 212828 | 10.5.1 |
+
+
+## M6(b): flexible dates (`results/m6_flexdates.jsonl`)
+
+Machine: None, load -1.0.
+
+| experiment | flex_days | part | queries | definition | mean_valid_windows_per_query | exact_size_p50 | exact_size_p90 | exact_size_mean | flex_size_p50 | flex_size_p90 | flex_size_mean | growth_queries | growth_p50 | growth_p90 | growth_mean | growth_max | queries_exact_empty | queries_exact_empty_flex_nonempty | repeat | bundle_as_of | bundle_dir | bundle_synthetic | n_listings | lucene_version |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| m6b_flexdates | 3 | eligible | 2000 | live, in place box, accommodates >= guests, nights within min/max, all nights open; flexible = union over windows with nights >= 1 and within each listing's min/max | 36.67 | 1060 | 8511 | 2870 | 1895 | 1.59e+04 | 4978 | 2000 | 1.602 | 2.5 | 1.823 | 23.67 | 0 | 0 | 1 | 2026-03-16 | C:\Mac\Documents\StaySearch\service\..\artifacts\bundle | False | 212828 | 10.5.1 |
+| m6b_flexdates | 3 | latency | 200 | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | 1 | 2026-03-16 | C:\Mac\Documents\StaySearch\service\..\artifacts\bundle | False | 212828 | 10.5.1 |
+| m6b_flexdates | 3 | check_ns | 200 | None | None | None | None | None | None | None | None | None | None | None | None | None | None | None | 1 | 2026-03-16 | C:\Mac\Documents\StaySearch\service\..\artifacts\bundle | False | 212828 | 10.5.1 |
+
+
+## M6(a): diversity re-ranking (`results/m6_diversity.jsonl`)
+
+Machine: Apple M3 Pro, load 9.24.
+
+| exp | split | lambda | K | n_queries | ndcg@10 | mrr | top10_mean_pairwise_km | top10_log_price_std | top10_distinct_room_types |
+|---|---|---|---|---|---|---|---|---|---|
+| m6_diversity | test | 0 | 100 | 9984 | 0.1273 | 0.108 | 3.665 | 0.4089 | 1.895 |
+| m6_diversity | test | 0.1 | 100 | 9984 | 0.1272 | 0.1079 | 3.702 | 0.4131 | 1.899 |
+| m6_diversity | test | 0.25 | 100 | 9984 | 0.1271 | 0.1078 | 3.767 | 0.4197 | 1.907 |
+| m6_diversity | test | 0.5 | 100 | 9984 | 0.1259 | 0.1071 | 3.847 | 0.4311 | 1.919 |
+| m6_diversity | test | 1 | 100 | 9984 | 0.1246 | 0.1058 | 3.995 | 0.4523 | 1.935 |
+| m6_diversity | test | 2 | 100 | 9984 | 0.1203 | 0.1032 | 4.255 | 0.4927 | 1.963 |
+
+
+## exp10 (M5): position bias, SIMULATED (`results/m5_position_bias.jsonl`)
+
+Machine: Apple M3 Pro, load 10.02.
+
+| exp | simulated | bias_strength | eta | seed | model | n_logged_sessions | n_test_lists | kendall_tau | ndcg@10_true_utility |
+|---|---|---|---|---|---|---|---|---|---|
+| exp10 | True | weak | 0.5 | 0 | no_position_feature | 16604 | 1780 | 0.7963 | 0.9439 |
+| exp10 | True | weak | 0.5 | 0 | position_feature_zero_at_inference | 16604 | 1780 | 0.7657 | 0.9339 |
+| exp10 | True | weak | 0.5 | 0 | position_feature_dropout0.5_extension | 16604 | 1780 | 0.7856 | 0.9422 |
+| exp10 | True | weak | 0.5 | 0 | shallow_position_tower_extension | 16604 | 1780 | 0.7942 | 0.9433 |
+| exp10 | True | weak | 0.5 | 1 | no_position_feature | 16604 | 1780 | 0.7765 | 0.9366 |
+| exp10 | True | weak | 0.5 | 1 | position_feature_zero_at_inference | 16604 | 1780 | 0.7653 | 0.9326 |
+| exp10 | True | weak | 0.5 | 1 | position_feature_dropout0.5_extension | 16604 | 1780 | 0.7782 | 0.9381 |
+| exp10 | True | weak | 0.5 | 1 | shallow_position_tower_extension | 16604 | 1780 | 0.7755 | 0.9371 |
+| exp10 | True | weak | 0.5 | 2 | no_position_feature | 16604 | 1780 | 0.7783 | 0.9372 |
+| exp10 | True | weak | 0.5 | 2 | position_feature_zero_at_inference | 16604 | 1780 | 0.7695 | 0.9324 |
+| exp10 | True | weak | 0.5 | 2 | position_feature_dropout0.5_extension | 16604 | 1780 | 0.7771 | 0.9364 |
+| exp10 | True | weak | 0.5 | 2 | shallow_position_tower_extension | 16604 | 1780 | 0.7766 | 0.9374 |
+| exp10 | True | medium | 1 | 0 | no_position_feature | 16604 | 1780 | 0.7524 | 0.92 |
+| exp10 | True | medium | 1 | 0 | position_feature_zero_at_inference | 16604 | 1780 | 0.7302 | 0.9168 |
+| exp10 | True | medium | 1 | 0 | position_feature_dropout0.5_extension | 16604 | 1780 | 0.7398 | 0.919 |
+| exp10 | True | medium | 1 | 0 | shallow_position_tower_extension | 16604 | 1780 | 0.761 | 0.9261 |
+| exp10 | True | medium | 1 | 1 | no_position_feature | 16604 | 1780 | 0.7473 | 0.9225 |
+| exp10 | True | medium | 1 | 1 | position_feature_zero_at_inference | 16604 | 1780 | 0.7387 | 0.924 |
+| exp10 | True | medium | 1 | 1 | position_feature_dropout0.5_extension | 16604 | 1780 | 0.7397 | 0.9218 |
+| exp10 | True | medium | 1 | 1 | shallow_position_tower_extension | 16604 | 1780 | 0.7579 | 0.9292 |
+| exp10 | True | medium | 1 | 2 | no_position_feature | 16604 | 1780 | 0.7369 | 0.9212 |
+| exp10 | True | medium | 1 | 2 | position_feature_zero_at_inference | 16604 | 1780 | 0.7279 | 0.9205 |
+| exp10 | True | medium | 1 | 2 | position_feature_dropout0.5_extension | 16604 | 1780 | 0.7423 | 0.9247 |
+| exp10 | True | medium | 1 | 2 | shallow_position_tower_extension | 16604 | 1780 | 0.746 | 0.927 |
+| exp10 | True | strong | 2 | 0 | no_position_feature | 16604 | 1780 | 0.6771 | 0.8873 |
+| exp10 | True | strong | 2 | 0 | position_feature_zero_at_inference | 16604 | 1780 | 0.6383 | 0.8767 |
+| exp10 | True | strong | 2 | 0 | position_feature_dropout0.5_extension | 16604 | 1780 | 0.6756 | 0.891 |
+| exp10 | True | strong | 2 | 0 | shallow_position_tower_extension | 16604 | 1780 | 0.6917 | 0.8962 |
+| exp10 | True | strong | 2 | 1 | no_position_feature | 16604 | 1780 | 0.6712 | 0.8818 |
+| exp10 | True | strong | 2 | 1 | position_feature_zero_at_inference | 16604 | 1780 | 0.6505 | 0.8792 |
+| exp10 | True | strong | 2 | 1 | position_feature_dropout0.5_extension | 16604 | 1780 | 0.6722 | 0.8847 |
+| exp10 | True | strong | 2 | 1 | shallow_position_tower_extension | 16604 | 1780 | 0.6787 | 0.8878 |
+| exp10 | True | strong | 2 | 2 | no_position_feature | 16604 | 1780 | 0.6647 | 0.8842 |
+| exp10 | True | strong | 2 | 2 | position_feature_zero_at_inference | 16604 | 1780 | 0.6497 | 0.882 |
+| exp10 | True | strong | 2 | 2 | position_feature_dropout0.5_extension | 16604 | 1780 | 0.6646 | 0.8873 |
+| exp10 | True | strong | 2 | 2 | shallow_position_tower_extension | 16604 | 1780 | 0.6757 | 0.8908 |
 

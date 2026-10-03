@@ -138,7 +138,7 @@ object Exp4 {
                 "queries" to mapOf(
                     "qps_target" to qps, "issued" to load.issued, "completed" to load.completed.get(), "errors" to load.errors.get(),
                     "last_error" to load.lastError?.toString(),
-                    "latency_from_intended_us" to StageStats.summarize(load.latencyUs),
+                    "latency_from_intended_us" to StageStats.summarize(load.latencyUs), "generator_dispatch_lag_us" to StageStats.summarize(load.dispatchLagUs),
                     "service_time_us" to StageStats.summarize(serviceUs),
                 ),
                 "query_stages" to stages.summary(),

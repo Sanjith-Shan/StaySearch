@@ -85,7 +85,7 @@ object Latency {
             }
             summary = mapOf(
                 "issued" to loop.issued, "completed" to loop.completed.get(), "errors" to loop.errors.get(),
-                "last_error" to loop.lastError?.toString(), "total_from_intended_us" to StageStats.summarize(loop.latencyUs),
+                "last_error" to loop.lastError?.toString(), "total_from_intended_us" to StageStats.summarize(loop.latencyUs), "generator_dispatch_lag_us" to StageStats.summarize(loop.dispatchLagUs),
             )
         } else {
             summary = runHttp(target, queries, rate, duration, warmup, stages)

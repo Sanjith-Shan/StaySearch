@@ -62,7 +62,7 @@ def main() -> None:
         for g in range(len(group)):
             sl = slice(offs[g], offs[g + 1])
             rows = c.rows_list[g]
-            if len(rows) < 10:
+            if len(rows) < 2:
                 continue
             lat, lng = s.lat[rows], s.lng[rows]
             lp = np.log1p(np.nan_to_num(s.price[rows], nan=np.nanmedian(s.price[rows]) if np.isfinite(s.price[rows]).any() else 100.0))
@@ -74,7 +74,7 @@ def main() -> None:
             mrr.append(1 / r if r else 0.0)
             t = order[:10]
             d = haversine_km(lat[t][:, None], lng[t][:, None], lat[t][None, :], lng[t][None, :])
-            dist.append(d[np.triu_indices(len(t), 1)].mean())
+            dist.append(d[np.triu_indices(len(t), 1)].mean())  # lists of 2+ only (skip above)
             pstd.append(lp[t].std())
             rooms.append(len(np.unique(s.room_type[rows][t])))
         row = {"exp": "m6_diversity", "split": "test", "lambda": lam, "K": args.K, "n_queries": len(nd)}
